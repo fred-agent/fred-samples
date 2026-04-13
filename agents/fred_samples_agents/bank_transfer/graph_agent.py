@@ -87,7 +87,7 @@ class BankTransferGraphAgent(GraphAgent):
     Change graph_steps.py when step behaviour changes.
     """
 
-    agent_id: str = "fred.sample.bank_transfer.graph"
+    agent_id: str = "fred.samples.bank_transfer.graph"
     role: str = "Bank Transfer Assistant"
     description: str = (
         "Sample graph agent that validates KYC compliance, evaluates transfer risk, "
