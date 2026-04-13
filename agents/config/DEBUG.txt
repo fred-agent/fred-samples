@@ -1,0 +1,500 @@
+EBUG    2026-04-13 13:25:00 | DEBUG | [pid=567076 MainThread/Task-127] | request_id: req_7b6d7fec88b2416b9ff24976c96df3c8                                              _base_client.py:1675
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:00 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507dece2c0>, 'SELECT v2_langgraph_checkpoint.thread_id, v2_langgraph_checkpoint.checkpoint_ns, v2_langgraph_checkpoint.checkpoint_id,                                          
+         v2_langgraph_checkpoint.parent_checkpoint_id, v2_langgraph_checkpoint.checkpoint_type, v2_langgraph_checkpoint.checkpoint_blob, v2_langgraph_checkpoint.metadata_json,             
+         v2_langgraph_checkpoint.created_at \nFROM v2_langgraph_checkpoint \nWHERE v2_langgraph_checkpoint.thread_id = ? AND v2_langgraph_checkpoint.checkpoint_ns = ? ORDER BY             
+         v2_langgraph_checkpoint.created_at DESC, v2_langgraph_checkpoint.checkpoint_id DESC\n LIMIT ? OFFSET ?', ('dev-session-32f2c7b1', '', 1, 0))                                       
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507dece2c0>, 'SELECT v2_langgraph_checkpoint.thread_id, v2_langgraph_checkpoint.checkpoint_ns, v2_langgraph_checkpoint.checkpoint_id,                                          
+         v2_langgraph_checkpoint.parent_checkpoint_id, v2_langgraph_checkpoint.checkpoint_type, v2_langgraph_checkpoint.checkpoint_blob, v2_langgraph_checkpoint.metadata_json,             
+         v2_langgraph_checkpoint.created_at \nFROM v2_langgraph_checkpoint \nWHERE v2_langgraph_checkpoint.thread_id = ? AND v2_langgraph_checkpoint.checkpoint_ns = ? ORDER BY             
+         v2_langgraph_checkpoint.created_at DESC, v2_langgraph_checkpoint.checkpoint_id DESC\n LIMIT ? OFFSET ?', ('dev-session-32f2c7b1', '', 1, 0)) completed                             
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:62
+         0x71507dece2c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:67
+         0x71507dece2c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507dece2c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507dece2c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method commit of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method commit of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method rollback of sqlite3.Connection       core.py:62
+         object at 0x71507ffe4a90>)                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method rollback of sqlite3.Connection       core.py:67
+         object at 0x71507ffe4a90>) completed                                                                                                                                               
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507dec51c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'runtime_kind', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x7150801862c0>))                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507dec51c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'runtime_kind', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x7150801862c0>)) completed                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507dec51c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507dec51c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x715080006540>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'pending',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>))                                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x715080006540>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'pending',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x715080006540>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x715080006540>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'pending_checkpoint_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>))                                                                           
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'pending_checkpoint_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>)) completed                                                                 
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150807bb3c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150807bb3c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507ffab040>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'agent_id',           
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185900>))                                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507ffab040>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'agent_id',           
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185900>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507ffab040>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507ffab040>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507dec50c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'node_id',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185480>))                                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507dec50c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'node_id',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185480>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507dec50c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507dec50c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'request',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185480>))                                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'request',            
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080185480>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150807bb3c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150807bb3c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507dec50c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'state',              
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>))                                                                                                    
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507dec50c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'state',              
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'msgpack', <memory at 0x715080186500>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507dec50c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507dec50c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'last_completed_state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'null', <memory at 0x715080185480>))                                                                               
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'last_completed_state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'null', <memory at 0x715080185480>)) completed                                                                     
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150807bb3c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150807bb3c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x715080006540>, 'INSERT INTO v2_langgraph_checkpoint (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_json)             
+         VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id) DO UPDATE SET parent_checkpoint_id = excluded.parent_checkpoint_id, checkpoint_type =           
+         excluded.checkpoint_type, checkpoint_blob = excluded.checkpoint_blob, metadata_json = excluded.metadata_json', ('dev-session-32f2c7b1', '',                                        
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', None, 'msgpack', <memory at 0x715080185180>, '{"source": "update", "step": 0, "parents": {}}'))                                            
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x715080006540>, 'INSERT INTO v2_langgraph_checkpoint (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_json)             
+         VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id) DO UPDATE SET parent_checkpoint_id = excluded.parent_checkpoint_id, checkpoint_type =           
+         excluded.checkpoint_type, checkpoint_blob = excluded.checkpoint_blob, metadata_json = excluded.metadata_json', ('dev-session-32f2c7b1', '',                                        
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', None, 'msgpack', <memory at 0x715080185180>, '{"source": "update", "step": 0, "parents": {}}')) completed                                  
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x715080006540>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x715080006540>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method commit of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method commit of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method rollback of sqlite3.Connection       core.py:62
+         object at 0x71507ffe4a90>)                                                                                                                                                         
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method rollback of sqlite3.Connection       core.py:67
+         object at 0x71507ffe4a90>) completed                                                                                                                                               
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/Task-123] | trace.span                                                                                            logging.py:43
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP]                                       mcp_runtime.py:332
+         agent=fred.samples.bank_transfer.graph aclose: Shutting down MCPRuntime and closing client.                                                                                        
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] client_id=0x7150807de120 close_quietly                         mcp_runtime.py:55
+DEBUG    2026-04-13 13:25:01 | DEBUG | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] client_id=0x7150807de120 close_quietly: nothing to close on   mcp_runtime.py:59
+         client.                                                                                                                                                                            
+INFO     2026-04-13 13:25:01 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP] agent=fred.samples.bank_transfer.graph mcp_runtime.py:353
+         aclose: MCP shutdown complete.                                                                                                                                                     
+
+
+
+
+
+
+
+
+
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | 127.0.0.1:50282 - "POST                         h11_impl.py:482
+         /samples/agents/v1/agents/execute/stream HTTP/1.1" 200                                                                                                                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [NET][TUNING] provider=openai reusing      http_clients.py:267
+         shared stack limits(max=500 keepalive=50 exp=10.0s) timeout(connect=10.0s read=120.0s write=30.0s pool=5.0s)                                                                       
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MODEL] Provider=openai Name=gpt-4.1-mini        factory.py:189
+         Settings={'temperature': 0.0, 'max_retries': 0, 'stream_usage': True}                                                                                                              
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MODEL][OPENAI] Constructing ChatOpenAI          factory.py:327
+         model=gpt-4.1-mini with explicit timeout=Timeout(connect=10.0, read=120.0, write=30.0, pool=5.0) stream_usage=True (overriding SDK default)                                        
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [V2][MODEL_ROUTING]                            provider.py:211
+         agent=fred.samples.bank_transfer.graph source=default profile=default.chat model=openai/gpt-4.1-mini                                                                               
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP]agent=fred.samples.bank_transfer.graph  mcp_runtime.py:124
+         mcp_servers=['mcp-bank-core-demo', 'mcp-risk-guard-demo'] remote=['mcp-bank-core-demo', 'mcp-risk-guard-demo'] inprocess=[] (enabled only)                                         
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP] agent=fred.samples.bank_transfer.graph mcp_runtime.py:372
+         no inprocess toolkit factory configured; skipping local toolkits.                                                                                                                  
+WARNING  2026-04-13 13:25:07 | WARNING | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | MCP connect init: Access token provider did not supply a token.    mcp_utils.py:213
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] connect init: Token retrieved successfully. Auth status: none   mcp_utils.py:221
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP][fred.samples.bank_transfer.graph] validate                     mcp_utils.py:278
+         name=mcp-bank-core-demo transport=streamable_http endpoint=http://localhost:9801/mcp auth=none                                                                                     
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP][fred.samples.bank_transfer.graph] connected                     mcp_utils.py:288
+         name=mcp-bank-core-demo transport=streamable_http endpoint=http://localhost:9801/mcp tools=3 dur_ms=38                                                                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP][fred.samples.bank_transfer.graph] validate                     mcp_utils.py:278
+         name=mcp-risk-guard-demo transport=streamable_http endpoint=http://localhost:9802/mcp auth=none                                                                                    
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP][fred.samples.bank_transfer.graph] connected                     mcp_utils.py:288
+         name=mcp-risk-guard-demo transport=streamable_http endpoint=http://localhost:9802/mcp tools=2 dur_ms=44                                                                            
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP][fred.samples.bank_transfer.graph] summary: all servers         mcp_utils.py:328
+         validated, total tools=5                                                                                                                                                           
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] initialized. Client: MultiServerMCPClient, Agent:              mcp_toolkit.py:57
+         _McpRuntimeAgentShim                                                                                                                                                               
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] agent=fred.samples.bank_transfer.graph init: Prefetched and   mcp_runtime.py:260
+         cached 5 tools.                                                                                                                                                                    
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] agent=fred.samples.bank_transfer.graph init: Successfully     mcp_runtime.py:271
+         built and connected client.                                                                                                                                                        
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507decc740>, 'SELECT v2_langgraph_checkpoint.thread_id, v2_langgraph_checkpoint.checkpoint_ns, v2_langgraph_checkpoint.checkpoint_id,                                          
+         v2_langgraph_checkpoint.parent_checkpoint_id, v2_langgraph_checkpoint.checkpoint_type, v2_langgraph_checkpoint.checkpoint_blob, v2_langgraph_checkpoint.metadata_json,             
+         v2_langgraph_checkpoint.created_at \nFROM v2_langgraph_checkpoint \nWHERE v2_langgraph_checkpoint.thread_id = ? AND v2_langgraph_checkpoint.checkpoint_ns = ? ORDER BY             
+         v2_langgraph_checkpoint.created_at DESC, v2_langgraph_checkpoint.checkpoint_id DESC\n LIMIT ? OFFSET ?', ('dev-session-32f2c7b1', '', 1, 0))                                       
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507decc740>, 'SELECT v2_langgraph_checkpoint.thread_id, v2_langgraph_checkpoint.checkpoint_ns, v2_langgraph_checkpoint.checkpoint_id,                                          
+         v2_langgraph_checkpoint.parent_checkpoint_id, v2_langgraph_checkpoint.checkpoint_type, v2_langgraph_checkpoint.checkpoint_blob, v2_langgraph_checkpoint.metadata_json,             
+         v2_langgraph_checkpoint.created_at \nFROM v2_langgraph_checkpoint \nWHERE v2_langgraph_checkpoint.thread_id = ? AND v2_langgraph_checkpoint.checkpoint_ns = ? ORDER BY             
+         v2_langgraph_checkpoint.created_at DESC, v2_langgraph_checkpoint.checkpoint_id DESC\n LIMIT ? OFFSET ?', ('dev-session-32f2c7b1', '', 1, 0)) completed                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:62
+         0x71507decc740>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:67
+         0x71507decc740>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507decc740>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507decc740>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x715080762d40>, 'SELECT v2_langgraph_checkpoint_blob.thread_id, v2_langgraph_checkpoint_blob.checkpoint_ns, v2_langgraph_checkpoint_blob.channel,                                 
+         v2_langgraph_checkpoint_blob.version, v2_langgraph_checkpoint_blob.value_type, v2_langgraph_checkpoint_blob.value_blob \nFROM v2_langgraph_checkpoint_blob \nWHERE                 
+         v2_langgraph_checkpoint_blob.thread_id = ? AND v2_langgraph_checkpoint_blob.checkpoint_ns = ? AND (v2_langgraph_checkpoint_blob.channel = ? AND                                    
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR                                               
+         v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND                                              
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR                                               
+         v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND                                              
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ?)', ('dev-session-32f2c7b1', '',                  
+         'runtime_kind', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'pending', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'pending_checkpoint_id',                                                
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'agent_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'node_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'request',                          
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'last_completed_state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2'))                          
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x715080762d40>, 'SELECT v2_langgraph_checkpoint_blob.thread_id, v2_langgraph_checkpoint_blob.checkpoint_ns, v2_langgraph_checkpoint_blob.channel,                                 
+         v2_langgraph_checkpoint_blob.version, v2_langgraph_checkpoint_blob.value_type, v2_langgraph_checkpoint_blob.value_blob \nFROM v2_langgraph_checkpoint_blob \nWHERE                 
+         v2_langgraph_checkpoint_blob.thread_id = ? AND v2_langgraph_checkpoint_blob.checkpoint_ns = ? AND (v2_langgraph_checkpoint_blob.channel = ? AND                                    
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR                                               
+         v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND                                              
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR                                               
+         v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND                                              
+         v2_langgraph_checkpoint_blob.version = ? OR v2_langgraph_checkpoint_blob.channel = ? AND v2_langgraph_checkpoint_blob.version = ?)', ('dev-session-32f2c7b1', '',                  
+         'runtime_kind', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'pending', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'pending_checkpoint_id',                                                
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'agent_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'node_id', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'request',                          
+         '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2', 'last_completed_state', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2')) completed                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:62
+         0x715080762d40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:67
+         0x715080762d40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x715080762d40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x715080762d40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507dec7640>, 'SELECT v2_langgraph_checkpoint_write.thread_id, v2_langgraph_checkpoint_write.checkpoint_ns, v2_langgraph_checkpoint_write.checkpoint_id,                        
+         v2_langgraph_checkpoint_write.task_id, v2_langgraph_checkpoint_write.idx, v2_langgraph_checkpoint_write.channel, v2_langgraph_checkpoint_write.value_type,                         
+         v2_langgraph_checkpoint_write.value_blob, v2_langgraph_checkpoint_write.task_path \nFROM v2_langgraph_checkpoint_write \nWHERE v2_langgraph_checkpoint_write.thread_id =           
+         ? AND v2_langgraph_checkpoint_write.checkpoint_ns = ? AND v2_langgraph_checkpoint_write.checkpoint_id = ? ORDER BY v2_langgraph_checkpoint_write.task_id,                          
+         v2_langgraph_checkpoint_write.idx', ('dev-session-32f2c7b1', '', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2'))                                                                          
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507dec7640>, 'SELECT v2_langgraph_checkpoint_write.thread_id, v2_langgraph_checkpoint_write.checkpoint_ns, v2_langgraph_checkpoint_write.checkpoint_id,                        
+         v2_langgraph_checkpoint_write.task_id, v2_langgraph_checkpoint_write.idx, v2_langgraph_checkpoint_write.channel, v2_langgraph_checkpoint_write.value_type,                         
+         v2_langgraph_checkpoint_write.value_blob, v2_langgraph_checkpoint_write.task_path \nFROM v2_langgraph_checkpoint_write \nWHERE v2_langgraph_checkpoint_write.thread_id =           
+         ? AND v2_langgraph_checkpoint_write.checkpoint_ns = ? AND v2_langgraph_checkpoint_write.checkpoint_id = ? ORDER BY v2_langgraph_checkpoint_write.task_id,                          
+         v2_langgraph_checkpoint_write.idx', ('dev-session-32f2c7b1', '', '1f1372b6-90d0-67fc-bffe-2ef3418efeb2')) completed                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:62
+         0x71507dec7640>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at core.py:67
+         0x71507dec7640>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507dec7640>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507dec7640>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method commit of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method commit of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method rollback of sqlite3.Connection       core.py:62
+         object at 0x71507ffe4a90>)                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method rollback of sqlite3.Connection       core.py:67
+         object at 0x71507ffe4a90>) completed                                                                                                                                               
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/Task-415] | trace.span                                                                                            logging.py:43
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/Task-415] | trace.span                                                                                            logging.py:43
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71508015bb40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'runtime_kind', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>))                                                                                    
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71508015bb40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'runtime_kind', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>)) completed                                                                          
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71508015bb40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71508015bb40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150b0a91b40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'pending',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>))                                                                                                    
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150b0a91b40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'pending',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150b0a91b40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150b0a91b40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x715080006740>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'pending_checkpoint_id', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>))                                                                              
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x715080006740>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'pending_checkpoint_id', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>)) completed                                                                    
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x715080006740>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x715080006740>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'agent_id',           
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>))                                                                                                    
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'agent_id',           
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080186440>)) completed                                                                                          
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150807bb3c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150807bb3c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507fff4cc0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'node_id',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>))                                                                                                       
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507fff4cc0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'node_id',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>)) completed                                                                                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507fff4cc0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507fff4cc0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150b0a91b40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'request',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080186440>))                                                                                                       
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150b0a91b40>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'request',            
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080186440>)) completed                                                                                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150b0a91b40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150b0a91b40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x71507fff4cc0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'state',              
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>))                                                                                                       
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x71507fff4cc0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '', 'state',              
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'null', <memory at 0x715080185780>)) completed                                                                                             
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x71507fff4cc0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x71507fff4cc0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'last_completed_state', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080185780>))                                                                            
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x7150807bb3c0>, 'INSERT INTO v2_langgraph_checkpoint_blob (thread_id, checkpoint_ns, channel, version, value_type, value_blob) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT              
+         (thread_id, checkpoint_ns, channel, version) DO UPDATE SET value_type = excluded.value_type, value_blob = excluded.value_blob', ('dev-session-32f2c7b1', '',                       
+         'last_completed_state', '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', 'msgpack', <memory at 0x715080185780>)) completed                                                                  
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x7150807bb3c0>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x7150807bb3c0>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method cursor of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:62
+         0x715080004f40>, 'INSERT INTO v2_langgraph_checkpoint (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_json)             
+         VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id) DO UPDATE SET parent_checkpoint_id = excluded.parent_checkpoint_id, checkpoint_type =           
+         excluded.checkpoint_type, checkpoint_blob = excluded.checkpoint_blob, metadata_json = excluded.metadata_json', ('dev-session-32f2c7b1', '',                                        
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', None, 'msgpack', <memory at 0x715080185780>, '{"source": "update", "step": 0, "parents": {}}'))                                            
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method execute of sqlite3.Cursor object at  core.py:67
+         0x715080004f40>, 'INSERT INTO v2_langgraph_checkpoint (thread_id, checkpoint_ns, checkpoint_id, parent_checkpoint_id, checkpoint_type, checkpoint_blob, metadata_json)             
+         VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (thread_id, checkpoint_ns, checkpoint_id) DO UPDATE SET parent_checkpoint_id = excluded.parent_checkpoint_id, checkpoint_type =           
+         excluded.checkpoint_type, checkpoint_blob = excluded.checkpoint_blob, metadata_json = excluded.metadata_json', ('dev-session-32f2c7b1', '',                                        
+         '1f1372b6-cdad-63a3-bffe-a4a174b21d8c', None, 'msgpack', <memory at 0x715080185780>, '{"source": "update", "step": 0, "parents": {}}')) completed                                  
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:62
+         0x715080004f40>)                                                                                                                                                                   
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method close of sqlite3.Cursor object at    core.py:67
+         0x715080004f40>) completed                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method commit of sqlite3.Connection object  core.py:62
+         at 0x71507ffe4a90>)                                                                                                                                                                
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method commit of sqlite3.Connection object  core.py:67
+         at 0x71507ffe4a90>) completed                                                                                                                                                      
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | executing functools.partial(<built-in method rollback of sqlite3.Connection       core.py:62
+         object at 0x71507ffe4a90>)                                                                                                                                                         
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 Thread-1 (_connection_worker_thread)/Sync] | operation functools.partial(<built-in method rollback of sqlite3.Connection       core.py:67
+         object at 0x71507ffe4a90>) completed                                                                                                                                               
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP]                                       mcp_runtime.py:332
+         agent=fred.samples.bank_transfer.graph aclose: Shutting down MCPRuntime and closing client.                                                                                        
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] client_id=0x7150807a10a0 close_quietly                         mcp_runtime.py:55
+DEBUG    2026-04-13 13:25:07 | DEBUG | [pid=567076 MainThread/mcp[fred.samples.bank_transfer.graph]] | [MCP] client_id=0x7150807a10a0 close_quietly: nothing to close on   mcp_runtime.py:59
+         client.                                                                                                                                                                            
+INFO     2026-04-13 13:25:07 | INFO | [pid=567076 MainThread/starlette.responses.StreamingResponse.__call__.<locals>.wrap] | [MCP] agent=fred.samples.bank_transfer.graph mcp_runtime.py:353
+         aclose: MCP shutdown complete.                                                                                                                                                     
+
+

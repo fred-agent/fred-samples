@@ -2,7 +2,7 @@ app:
   name: "Fred Sample Agents"
   base_url: "/samples/agents/v1"
   port: 8010
-  log_level: "info"
+  log_level: "debug"
 
 security:
   m2m:
