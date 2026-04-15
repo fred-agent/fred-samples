@@ -1,0 +1,16 @@
+.git
+.gitignore
+
+servers/
+
+**/.venv
+**/target
+**/.ruff_cache
+**/.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.egg-info
+
+agents/config/.env

@@ -3,7 +3,7 @@
 Ready-to-run examples for the [Fred](https://fredk8.dev) agentic platform.
 
 Each sample is self-contained: a Python agent pod that you start with `make run` and
-talk to with `make chat`, paired with the MCP servers its workflow depends on.
+talk to with `make chat`, paired with MCP servers when its workflow depends on them.
 
 > **Documentation** → [fredk8.dev](https://fredk8.dev)
 
@@ -88,6 +88,27 @@ Reroute it to a pickup point
 
 ---
 
+### Team of 3 — TeamAgent route demo
+
+A team-based sample that proves delegation and routing across three child agents
+(1 Graph + 2 ReAct) behind one router agent.
+
+**Sample docs:** [README_AGENT.md](agents/fred_samples_agents/team_of_3_agents_sample/README_AGENT.md) · [README_CLI.md](agents/fred_samples_agents/team_of_3_agents_sample/README_CLI.md)
+
+```
+Agent ID: fred.samples.team_of_3.router
+Requires: no MCP server (pod-local child delegation only)
+```
+
+**Try it:**
+```
+Please approve this expense request for 120 EUR.
+Convert 2.5 km to meters and add 120.
+Rewrite this sentence in plain English: The rollout was postponed due to environmental contingencies.
+```
+
+---
+
 ## Quick start
 
 ### 1. Prerequisites
@@ -147,6 +168,7 @@ Switch to a sample agent:
 ```
 /agent fred.samples.bank_transfer.graph
 /agent fred.samples.postal_tracking.graph
+/agent fred.samples.team_of_3.router
 ```
 
 List all available agents:
@@ -168,6 +190,14 @@ List all available agents:
 | `minimal-mcp-server` | — | Template — one echo tool, no business logic |
 
 All MCP servers use the [Streamable HTTP](https://modelcontextprotocol.io/specification) transport at `/mcp`.
+
+---
+
+## Docker
+
+For container build/run/push workflows, see:
+
+- `dockerfiles/README.md`
 
 ---
 
