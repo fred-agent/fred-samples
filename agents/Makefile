@@ -64,6 +64,19 @@ update: $(TARGET)/.uv-installed ## Re-resolve and update all dependencies
 lint: dev ## Run ruff linter
 	$(UV) run ruff check fred_samples_agents/
 
+.PHONY: code-quality
+code-quality: lint ## Run default code-quality checks for the sample project
+
+.PHONY: test
+test: dev ## Run the default offline test suite
+	@status=0; \
+		VIRTUAL_ENV= $(UV) run pytest || status=$$?; \
+		if [ "$$status" -eq 5 ]; then \
+			echo "No tests collected; treating offline sample validation as successful."; \
+		elif [ "$$status" -ne 0 ]; then \
+			exit "$$status"; \
+		fi
+
 # ── Docker ─────────────────────────────────────────────────────────────────────
 
 .PHONY: docker-build

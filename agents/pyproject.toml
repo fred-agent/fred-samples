@@ -8,6 +8,7 @@ license = { text = "Apache-2.0" }
 dependencies = [
   "fred-sdk>=0.1.9",
   "fred-runtime>=0.1.17",
+  "greenlet>=3.4.0",
   "uvicorn>=0.35",
 ]
 
