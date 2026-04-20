@@ -7,8 +7,10 @@ common_model_settings:
     read: 120.0
 
 default_profile_by_capability:
-  chat: default.chat
-  language: default.language
+  #chat: default.chat
+  #language: default.language
+  chat: mock.chat
+  language: mock.language
 
 profiles:
   - profile_id: default.chat
@@ -26,5 +28,23 @@ profiles:
       provider: openai
       name: gpt-4.1-mini
       settings: {}
+
+  - profile_id: mock.language
+    capability: language
+    description: "Default mock benchmark model."
+    model:
+      provider: openai
+      name: gpt-4o
+      settings:
+        base_url: http://localhost:8383/v1
+
+  - profile_id: mock.chat
+    capability: chat
+    description: "Default mock benchmark model."
+    model:
+      provider: openai
+      name: gpt-4o
+      settings:
+        base_url: http://localhost:8383/v1
 
 rules: []
