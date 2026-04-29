@@ -3,6 +3,8 @@ VENV    := $(CURDIR)/.venv
 PYTHON  := $(VENV)/bin/python
 PIP     := $(VENV)/bin/pip
 UV      := $(VENV)/bin/uv
+UV_CACHE_DIR := $(TARGET)/.uv-cache
+UV_RUN  := UV_CACHE_DIR=$(UV_CACHE_DIR) $(UV)
 
 DOCKER_IMAGE_NAME     ?= fred-samples-agents
 DOCKER_IMAGE_TAG      ?= latest
@@ -38,7 +40,7 @@ $(TARGET)/.uv-installed: $(TARGET)/.venv-created
 	@touch $@
 
 $(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
-	$(UV) sync --extra dev
+	$(UV_RUN) sync --extra dev
 	@touch $@
 
 .PHONY: dev
@@ -49,20 +51,20 @@ dev: $(TARGET)/.compiled ## Install dependencies
 
 .PHONY: run
 run: dev ## Start the sample agents pod locally
-	ENV_FILE=$(CURDIR)/config/.env VIRTUAL_ENV= $(UV) run python -m fred_samples_agents
+	ENV_FILE=$(CURDIR)/config/.env VIRTUAL_ENV= $(UV_RUN) run python -m fred_samples_agents
 
 .PHONY: chat
 chat: dev ## Open the interactive chat client for a running pod
-	VIRTUAL_ENV= $(UV) run fred-agent-chat
+	VIRTUAL_ENV= $(UV_RUN) run fred-agent-chat
 
 .PHONY: update
 update: $(TARGET)/.uv-installed ## Re-resolve and update all dependencies
-	$(UV) sync
+	$(UV_RUN) sync --extra dev
 	@touch $(TARGET)/.compiled
 
 .PHONY: lint
 lint: dev ## Run ruff linter
-	$(UV) run ruff check fred_samples_agents/
+	$(UV_RUN) run ruff check fred_samples_agents/
 
 .PHONY: code-quality
 code-quality: lint ## Run default code-quality checks for the sample project
@@ -70,7 +72,7 @@ code-quality: lint ## Run default code-quality checks for the sample project
 .PHONY: test
 test: dev ## Run the default offline test suite
 	@status=0; \
-		VIRTUAL_ENV= $(UV) run pytest || status=$$?; \
+		VIRTUAL_ENV= $(UV_RUN) run pytest || status=$$?; \
 		if [ "$$status" -eq 5 ]; then \
 			echo "No tests collected; treating offline sample validation as successful."; \
 		elif [ "$$status" -ne 0 ]; then \
