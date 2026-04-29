@@ -68,7 +68,7 @@ class PostalTrackingGraphAgent(GraphAgent):
 
     How to use it:
     - start the postal and IoT demo MCP servers (see module docstring above)
-    - select agent id "sample.postal_tracking.graph" in fred-agent-chat
+    - select agent id "sample.postal_tracking.graph" in fred-agents-cli
     """
 
     agent_id: str = "fred.samples.postal_tracking.graph"
