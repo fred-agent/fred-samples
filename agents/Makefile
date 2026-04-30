@@ -51,9 +51,9 @@ dev: $(TARGET)/.compiled ## Install dependencies
 run: dev ## Start the sample agents pod locally
 	ENV_FILE=$(CURDIR)/config/.env VIRTUAL_ENV= $(UV) run python -m fred_samples_agents
 
-.PHONY: chat
-chat: dev ## Open the interactive chat client for a running pod
-	VIRTUAL_ENV= $(UV) run fred-agent-chat
+.PHONY: cli
+cli: dev ## Open the interactive chat client for a running pod
+	VIRTUAL_ENV= $(UV) run fred-agents-cli
 
 .PHONY: update
 update: $(TARGET)/.uv-installed ## Re-resolve and update all dependencies

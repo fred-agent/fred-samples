@@ -4,14 +4,12 @@ This document only uses CLI commands verified in the installed package versions.
 
 ## 1. Actually available CLI commands (installed version)
 Verified console entry points for installed Fred packages:
-- `fred-agent-chat`
-
-No additional `fred-runtime` top-level CLI command was found in installed `fred-runtime==0.1.14` entry points.
+- `fred-agents-cli`
 
 ## 2. How to access CLI help
 From `agents/`:
 ```bash
-.venv/bin/fred-agent-chat --help
+.venv/bin/fred-agents-cli --help
 ```
 
 ## 3. How to run the sample using supported commands
@@ -22,12 +20,12 @@ make run
 
 Use CLI (existing flow):
 ```bash
-make chat
+make cli
 ```
 
 Or direct one-shot:
 ```bash
-.venv/bin/fred-agent-chat \
+.venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
   "Convert 7 km to meters."
@@ -37,7 +35,7 @@ Or direct one-shot:
 
 Test A (graph):
 ```bash
-.venv/bin/fred-agent-chat \
+.venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
   "Please approve this expense request for 120 EUR."
@@ -46,7 +44,7 @@ Expected marker: `[ROUTED:GRAPH]`
 
 Test B (react_1):
 ```bash
-.venv/bin/fred-agent-chat \
+.venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
   "Convert 2.5 km to meters and add 120."
@@ -55,7 +53,7 @@ Expected marker: `[ROUTED:REACT_1]`
 
 Test C (react_2):
 ```bash
-.venv/bin/fred-agent-chat \
+.venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
   "Rewrite this sentence in plain English: The rollout was postponed due to environmental contingencies."
@@ -71,7 +69,7 @@ Each child emits a stable marker:
 ## 6. Capturing routing evidence/logs
 Use chat client verbose/stream flags:
 ```bash
-.venv/bin/fred-agent-chat \
+.venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
   --verbose --stream \
@@ -79,7 +77,3 @@ Use chat client verbose/stream flags:
 ```
 
 `--verbose` prints intermediate runtime events; `--stream` renders SSE events live.
-
-## 7. If a “new CLI” is expected
-In installed `fred-runtime==0.1.14`, only `fred-agent-chat` is exposed as a Fred runtime console script.  
-So this sample uses the real supported command path above and does not assume any additional CLI.
