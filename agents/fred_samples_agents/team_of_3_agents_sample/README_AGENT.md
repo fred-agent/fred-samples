@@ -53,7 +53,7 @@ In another terminal, from `agents/`:
 make chat
 ```
 
-Inside chat, select:
+Inside `fred-agents-cli`, select:
 - `/agent fred.samples.team_of_3.router`
 
 ## 5. Exactly 3 routing tests

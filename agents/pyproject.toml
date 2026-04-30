@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
-  "fred-sdk>=0.1.9",
-  "fred-runtime>=0.1.17",
+  "fred-sdk>=0.1.11",
+  "fred-runtime>=0.1.19",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
 ]
@@ -30,7 +30,3 @@ dev = [
   "pytest>=8.4.2",
   "ruff>=0.12.5",
 ]
-
-[tool.uv.sources]
-fred-sdk = { path = "../../fred/libs/fred-sdk", editable = true }
-fred-runtime = { path = "../../fred/libs/fred-runtime", editable = true }

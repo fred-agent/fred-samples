@@ -6,6 +6,8 @@ This document only uses CLI commands verified in the installed package versions.
 Verified console entry points for installed Fred packages:
 - `fred-agents-cli`
 
+For this starter package, `fred-runtime==0.1.19` exposes `fred-agents-cli` as the runtime chat client.
+
 ## 2. How to access CLI help
 From `agents/`:
 ```bash
@@ -77,3 +79,7 @@ Use chat client verbose/stream flags:
 ```
 
 `--verbose` prints intermediate runtime events; `--stream` renders SSE events live.
+
+## 7. If a “new CLI” is expected
+In this starter package's installed `fred-runtime==0.1.19`, the supported runtime console script is `fred-agents-cli`.
+If a future runtime release renames the CLI again, verify the available entry points in `.venv/bin/` or the package metadata before updating the starter docs.
