@@ -47,6 +47,13 @@ $(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
 dev: $(TARGET)/.compiled ## Install dependencies
 	@echo "✅ Dependencies installed."
 
+.PHONY: dev-local
+dev-local: dev ## Install with local fred/libs builds instead of PyPI (requires ../../fred checkout)
+	$(UV_RUN) pip install \
+		--editable ../../fred/libs/fred-sdk \
+		--editable ../../fred/libs/fred-runtime
+	@echo "✅ Local fred-sdk and fred-runtime installed from ../../fred/libs."
+
 # ── Main targets ───────────────────────────────────────────────────────────────
 
 .PHONY: run
