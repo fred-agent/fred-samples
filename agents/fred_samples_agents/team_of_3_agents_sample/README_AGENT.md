@@ -58,29 +58,36 @@ Inside `fred-agents-cli`, select:
 
 ## 5. Exactly 3 routing tests
 
+Each test is verified by the coordinator's own "Choosing a specialist" thought
+(the "Thought…" panel above the reply in the chat UI, or the `thought`-channel
+message in `/history`) rather than a text marker in the answer — the
+coordinator's routing decision is now observable on its own, per
+`AGENT-THINKING-API-RFC.md` Amendment C. The reply text itself is a clean
+answer with no routing artifact.
+
 ### Test 1 (should route to graph child)
 - Prompt:
   `Please approve this expense request for 120 EUR.`
 - Expected child:
   `fred.samples.team_of_3.graph_child`
-- Expected marker in response:
-  `[ROUTED:GRAPH]`
+- Expected thought conclusion:
+  `Routing to Graph Approval Specialist.`
 
 ### Test 2 (should route to ReAct agent 1)
 - Prompt:
   `Convert 2.5 km to meters and add 120.`
 - Expected child:
   `fred.samples.team_of_3.react_math`
-- Expected marker in response:
-  `[ROUTED:REACT_1]`
+- Expected thought conclusion:
+  `Routing to Math Conversion Specialist.`
 
 ### Test 3 (should route to ReAct agent 2)
 - Prompt:
   `Rewrite this sentence in plain English: The rollout was postponed due to environmental contingencies.`
 - Expected child:
   `fred.samples.team_of_3.react_writer`
-- Expected marker in response:
-  `[ROUTED:REACT_2]`
+- Expected thought conclusion:
+  `Routing to Writing Specialist.`
 
 ## 6. Routing analysis (verified from installed packages)
 

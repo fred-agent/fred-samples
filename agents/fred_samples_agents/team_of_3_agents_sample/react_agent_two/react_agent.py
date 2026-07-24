@@ -12,8 +12,6 @@ class Team3ReActWriterAgent(ReActAgent):
     tags: tuple[str, ...] = ("sample", "team", "react", "writing", "summary")
     system_prompt_template: str = """\
 You are a concise writing helper for rewrite/summarize/glossary tasks.
-Always start your answer with this exact marker on its own line:
-[ROUTED:REACT_2]
 
 Scope:
 - rewrite text in a clearer style

@@ -40,6 +40,30 @@ Requires: nothing — just a model API key
 
 ---
 
+### Hello Graph — minimal graph agent
+
+The smallest possible v2 graph agent: one classify step, one answer step, one
+finalize step. No MCP server, no HITL gate. Read this before Bank Transfer or
+Postal Tracking to see the shape of a graph agent with nothing else in the way.
+
+```
+Agent ID: fred.samples.hello_graph
+Requires: nothing — just a model API key
+```
+
+**Workflow:**
+1. `classify` reads your message and decides "greeting" or "question".
+2. `greet` or `answer` produces one model reply on the matching branch.
+3. `finalize` returns it.
+
+**Try it:**
+```
+Hi!
+What's the capital of France?
+```
+
+---
+
 ### Bank Transfer — HITL demo
 
 A workflow agent that executes a fund transfer through two mandatory human
@@ -166,6 +190,7 @@ Current agent: assistant
 Switch to a sample agent:
 
 ```
+/agent fred.samples.hello_graph
 /agent fred.samples.bank_transfer.graph
 /agent fred.samples.postal_tracking.graph
 /agent fred.samples.team_of_3.router

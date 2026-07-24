@@ -3,8 +3,6 @@ app:
   base_url: "/samples/agents/v1"
   port: 8010
   log_level: "debug"
-  metrics_address: "127.0.0.1"
-  metrics_port: 9115
 
 security:
   m2m:
@@ -25,7 +23,13 @@ ai:
 
 observability:
   tracer: logging     # null | logging | langfuse
-  metrics: prometheus    # null | logging | prometheus
+  kpi:
+    log:
+      enabled: true
+    prometheus:
+      enabled: false
+    opensearch:
+      enabled: false
 
 storage:
   postgres:
