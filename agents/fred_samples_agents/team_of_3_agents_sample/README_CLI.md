@@ -40,33 +40,37 @@ Test A (graph):
 .venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
+  --verbose --stream \
   "Please approve this expense request for 120 EUR."
 ```
-Expected marker: `[ROUTED:GRAPH]`
+Expected thought conclusion: `Routing to Graph Approval Specialist.`
 
 Test B (react_1):
 ```bash
 .venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
+  --verbose --stream \
   "Convert 2.5 km to meters and add 120."
 ```
-Expected marker: `[ROUTED:REACT_1]`
+Expected thought conclusion: `Routing to Math Conversion Specialist.`
 
 Test C (react_2):
 ```bash
 .venv/bin/fred-agents-cli \
   --base-url http://127.0.0.1:8010/samples/agents/v1 \
   --agent fred.samples.team_of_3.router \
+  --verbose --stream \
   "Rewrite this sentence in plain English: The rollout was postponed due to environmental contingencies."
 ```
-Expected marker: `[ROUTED:REACT_2]`
+Expected thought conclusion: `Routing to Writing Specialist.`
 
 ## 5. How to identify which child agent handled the request
-Each child emits a stable marker:
-- graph child: `[ROUTED:GRAPH]`
-- react child 1: `[ROUTED:REACT_1]`
-- react child 2: `[ROUTED:REACT_2]`
+The coordinator's own routing decision is a `thought`-channel event
+(`phase="planning"`, `title="Choosing a specialist"`) with a `conclusion`
+field naming the chosen member — visible in the chat UI's "Thought…" panel
+and, from the CLI, in `--verbose --stream` output. Child replies carry no
+routing marker; see `AGENT-THINKING-API-RFC.md` Amendment C.
 
 ## 6. Capturing routing evidence/logs
 Use chat client verbose/stream flags:
