@@ -6,8 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
-  "fred-sdk>=2.0.5",
-  "fred-runtime>=2.0.4",
+  "fred-sdk>=3.3.5",
+  "fred-runtime>=3.3.7",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
 ]
