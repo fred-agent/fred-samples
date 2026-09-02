@@ -14,6 +14,9 @@ talk to with `make chat`, paired with MCP servers when its workflow depends on t
 ```
 fred-samples/
 ├── agents/                         Agent pod — all sample agents in one service
+├── apps/
+│   ├── document-triage/            Sample application — no secrets, agents read only
+│   └── progress-tracker/           Sample application — UI + API + agent capability
 └── servers/
     └── mcp/
         └── python/
@@ -130,6 +133,87 @@ Please approve this expense request for 120 EUR.
 Convert 2.5 km to meters and add 120.
 Rewrite this sentence in plain English: The rollout was postponed due to environmental contingencies.
 ```
+
+---
+
+## Applications
+
+Agents are not the only thing you can add to Fred. An **application** is your own
+UI and service, rendered in Fred and reachable by its agents.
+
+There are two, in `apps/`. They solve the same shape of problem and differ in
+exactly one decision — **who writes the durable record** — which is what decides
+whether the application needs a datastore and a secret of its own.
+
+| | `apps/document-triage/` | `apps/progress-tracker/` |
+|---|---|---|
+| Who writes | the human, under their own bearer | agents, through the app's API |
+| Storage | the team's Knowledge Flow workspace | SQLite owned by the app |
+| Secrets | **none** | a shared service key |
+| Start here | ✅ | only if you need agent writes |
+
+**Deployment guide for both:** [apps/DEPLOYMENT.md](apps/DEPLOYMENT.md)
+
+---
+
+### Document Triage — sample application, no secrets
+
+A team reviews the documents in one of its folders, marking each **reviewed** or
+**needs work**. Agents read the corpus and propose triage in chat; only a person
+records a decision.
+
+```
+Folder:   apps/document-triage/          (the folder name is also the app_id)
+Pieces:   ui/ (static page) · api/ (stateless FastAPI) · capability/ (read-only tools)
+Requires: a Fred deployment with Knowledge Flow
+```
+
+**Sample docs:** [README.md](apps/document-triage/README.md) ·
+[DEPLOYMENT.md](apps/DEPLOYMENT.md)
+
+Its capability is read-only and holds no credential: it reads
+`document_folders`, `document_summarize` and `workspace_fs`, whose adapters keep
+the runtime's token private. Agents may read team-shared files but may only
+mutate inside their own subtree — *agents never share* — so the human commits
+every record. That constraint is why this sample needs no secret at all, and it
+is explained in
+[Why there is no service key](apps/document-triage/README.md#why-there-is-no-service-key).
+
+---
+
+### Progress Tracker — sample application
+
+The user records a long-running task in a small web UI, then advances it by
+talking to agents; the application keeps the record — tasks, decisions, and the
+conversations that touched them — so work survives across days and sessions.
+
+```
+Folder:   apps/progress-tracker/         (the folder name is also the app_id)
+Pieces:   ui/ (static page) · api/ (FastAPI + SQLite) · capability/ (agent tools)
+Requires: a Fred deployment to render the UI — but the API runs standalone
+```
+
+**Sample docs:** [README.md](apps/progress-tracker/README.md) ·
+[DEPLOYMENT.md](apps/DEPLOYMENT.md)
+
+Because its agents write shared state — which Fred does not support directly —
+it keeps its own database and reaches it with a shared key Fred neither issues
+nor validates. The README is explicit about what that costs; read it before
+copying the pattern.
+
+**Try the API on its own** (no cluster needed):
+
+```bash
+cd apps/progress-tracker/api
+uv venv && uv pip install -r requirements.txt
+PROGRESS_TRACKER_SERVICE_KEY=dev-key .venv/bin/uvicorn app:app --port 8000
+```
+
+---
+
+Both capabilities are already wired into the agent pod above: `agents/` depends
+on each package by path, so `make dev` installs them. Each stays inert —
+contributing no tools — until its application is reachable.
 
 ---
 

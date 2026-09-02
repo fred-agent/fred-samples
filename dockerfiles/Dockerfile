@@ -21,6 +21,12 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} && \
 # Copy dependency manifests first for Docker layer caching.
 COPY --chown=${USER_ID}:${GROUP_ID} agents/pyproject.toml agents/uv.lock* /app/
 
+# The pod depends on the sample capabilities by path (see agents/pyproject.toml),
+# so they have to be present before the sync. `../apps/...` is resolved relative
+# to /app, which is why they land at /apps.
+COPY --chown=${USER_ID}:${GROUP_ID} apps/progress-tracker/capability /apps/progress-tracker/capability
+COPY --chown=${USER_ID}:${GROUP_ID} apps/document-triage/capability /apps/document-triage/capability
+
 USER ${USER_NAME}
 
 # Install runtime dependencies only; project source is copied later.

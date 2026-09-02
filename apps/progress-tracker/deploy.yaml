@@ -1,0 +1,111 @@
+# The sample's own workloads, in their own namespace.
+#
+# Nothing here is special to Fred: two ordinary Deployments and Services. Fred
+# reaches them only by the Service DNS names given in FRONTEND_APPLICATIONS_JSON,
+# which is why an application can live in any namespace.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
+# Everything else is self-contained.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: progress-tracker
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: progress-tracker-ui
+  namespace: progress-tracker
+  labels: { app: progress-tracker-ui }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: progress-tracker-ui }
+  template:
+    metadata:
+      labels: { app: progress-tracker-ui }
+    spec:
+      containers:
+        - name: ui
+          image: progress-tracker-ui:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 80 }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: progress-tracker-ui
+  namespace: progress-tracker
+spec:
+  selector: { app: progress-tracker-ui }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: progress-tracker-api
+  namespace: progress-tracker
+  labels: { app: progress-tracker-api }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: progress-tracker-api }
+  template:
+    metadata:
+      labels: { app: progress-tracker-api }
+    spec:
+      # The image runs as uid 10001; fsGroup is what makes the mounted volume
+      # below writable by it.
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: api
+          image: progress-tracker-api:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            # EDIT: fully qualified, because this service lives in another
+            # namespace and the entitlement check must reach Fred's control
+            # plane. Substitute your Fred namespace for `fred`.
+            - name: CONTROL_PLANE_BASE
+              value: http://control-plane-backend.fred.svc.cluster.local:8222
+            # EDIT: read-only, used to show the conversations pinned to a task.
+            # The caller's own bearer is forwarded, so this reads no one else's
+            # chat. Point it at whichever agent pod serves your conversations --
+            # for this repository's own pod that is
+            # http://fred-samples-agents.<ns>.svc.cluster.local:8010/samples/agents/v1
+            - name: RUNTIME_BASE
+              value: http://fred-agents.fred.svc.cluster.local:80/fred/agents/v2
+            # Shared with the agents pod so the capability can call this API
+            # as itself. This sample's own stopgap, not a Fred mechanism -- see
+            # README.md before reusing the idea. Never commit the value; create
+            # the secret out of band (README).
+            - name: PROGRESS_TRACKER_SERVICE_KEY
+              valueFrom:
+                secretKeyRef: { name: progress-tracker-service, key: key }
+            - name: PROGRESS_TRACKER_DB
+              value: /data/progress-tracker.db
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 3
+      volumes:
+        # emptyDir keeps the sample to one `kubectl apply` with no storage
+        # class to pick: the task records live as long as the pod does. Swap in
+        # a PersistentVolumeClaim the moment you want them to outlive a restart.
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: progress-tracker-api
+  namespace: progress-tracker
+spec:
+  selector: { app: progress-tracker-api }
+  ports: [{ port: 8000, targetPort: 8000 }]

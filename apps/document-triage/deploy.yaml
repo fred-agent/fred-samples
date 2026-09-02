@@ -1,0 +1,93 @@
+# The sample's own workloads, in their own namespace.
+#
+# Nothing here is special to Fred: two ordinary Deployments and Services. Fred
+# reaches them only by the Service DNS names given in FRONTEND_APPLICATIONS_JSON,
+# which is why an application can live in any namespace.
+#
+# Note what is absent: no Secret, no volume, no database. This application
+# stores nothing of its own -- every record lives in the team's Knowledge Flow
+# workspace and is written with the caller's own token.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: document-triage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-triage-ui
+  namespace: document-triage
+  labels: { app: document-triage-ui }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: document-triage-ui }
+  template:
+    metadata:
+      labels: { app: document-triage-ui }
+    spec:
+      containers:
+        - name: ui
+          image: document-triage-ui:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 80 }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-triage-ui
+  namespace: document-triage
+spec:
+  selector: { app: document-triage-ui }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-triage-api
+  namespace: document-triage
+  labels: { app: document-triage-api }
+spec:
+  # The service is stateless -- it holds the caller's request and nothing else --
+  # so it scales horizontally without any of the usual caveats.
+  replicas: 1
+  selector:
+    matchLabels: { app: document-triage-api }
+  template:
+    metadata:
+      labels: { app: document-triage-api }
+    spec:
+      containers:
+        - name: api
+          image: document-triage-api:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            # EDIT: fully qualified, because this service lives in another
+            # namespace and the entitlement check must reach Fred's control
+            # plane. Substitute your Fred namespace for `fred`.
+            - name: CONTROL_PLANE_BASE
+              value: http://control-plane-backend.fred.svc.cluster.local:8222
+            # EDIT: Knowledge Flow, which owns both the document corpus and the
+            # team workspace. Every call the API makes here carries the
+            # caller's own bearer, so Knowledge Flow authorizes per user.
+            - name: KNOWLEDGE_FLOW_BASE
+              value: http://knowledge-flow-backend.fred.svc.cluster.local:8000/knowledge-flow/v1
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-triage-api
+  namespace: document-triage
+spec:
+  selector: { app: document-triage-api }
+  ports: [{ port: 8000, targetPort: 8000 }]

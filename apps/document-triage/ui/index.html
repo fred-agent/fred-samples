@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Document Triage</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; padding: 20px; background: transparent; }
+      h1 { font-size: 1.15rem; margin: 0 0 2px; }
+      .sub { color: #777; font-size: 0.82rem; margin-bottom: 16px; }
+      select, input, button { font: inherit; }
+      select, input {
+        padding: 7px 10px; border: 1px solid #8884; border-radius: 6px;
+        background: transparent; color: inherit;
+      }
+      .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+      .bar select { flex: 1; }
+      button { padding: 6px 12px; border: 0; border-radius: 6px; background: #2563eb;
+               color: #fff; cursor: pointer; }
+      button.ghost { background: none; color: #2563eb; padding: 4px 8px; }
+      button.ghost:hover { background: #2563eb18; }
+      .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+      .stat { flex: 1 1 110px; border: 1px solid #8883; border-radius: 8px; padding: 9px 12px; }
+      .stat .n { font-size: 1.3rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+      .stat .k { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+      .doc { border: 1px solid #8883; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+      .row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .name { font-weight: 600; }
+      .pill { margin-left: auto; font-size: 0.72rem; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+      .unreviewed { background: #64748b22; color: #64748b; }
+      .reviewed { background: #16a34a22; color: #16a34a; }
+      .needs_work { background: #b4530922; color: #b45309; }
+      .note { font-size: 0.82rem; color: #888; margin-top: 6px; }
+      .actions { display: flex; gap: 6px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+      .actions input { flex: 1 1 220px; font-size: 0.85rem; padding: 5px 9px; }
+      #err { color: #dc2626; font-size: 0.85rem; margin-bottom: 8px; }
+      .empty { color: #888; font-size: 0.88rem; }
+      .hint { color: #888; font-size: 0.78rem; margin: 14px 0 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Document Triage</h1>
+    <div class="sub" id="ctx">connecting…</div>
+
+    <div class="bar">
+      <select id="folder"><option value="">Loading folders…</option></select>
+      <button class="ghost" id="ask">Ask an agent</button>
+    </div>
+
+    <div id="err"></div>
+    <div id="view"></div>
+
+    <p class="hint">
+      Agents can read this board and propose triage in chat, but only you can
+      record a decision — every mark below is written under your own identity.
+    </p>
+
+    <script>
+      // Frame side of the Fred application protocol. This page holds no token
+      // and names no upstream: every call is asked of the host, which attaches
+      // the caller's bearer and routes to this application's own service.
+      const PROTOCOL_VERSION = "1";
+      const pending = new Map();
+      let seq = 0;
+      let teamId = null;
+      let tagId = null;
+      let loading = false;   // re-entrancy guard: the poll must not overlap a load
+
+      const post = (msg) => parent.postMessage(msg, "*");
+      const esc = (s) =>
+        String(s ?? "").replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+      // The host prefixes /app-services/<app>/teams/<team> itself, so a path
+      // here is relative to that root — never repeat the team segment.
+      function hostFetch(path, init = {}) {
+        // A fresh id per request: the host bounds concurrency per id, and
+        // reusing one would collide with a request still in flight.
+        const requestId = `r${++seq}`;
+        post({
+          type: "fred:request",
+          requestId,
+          path,
+          method: init.method || "GET",
+          headers: init.body ? { "content-type": "application/json" } : {},
+          body: init.body || null,
+        });
+        return new Promise((resolve, reject) => {
+          pending.set(requestId, { resolve, reject });
+          setTimeout(() => {
+            if (pending.delete(requestId)) reject(new Error("timed out"));
+          }, 15000);
+        });
+      }
+
+      window.addEventListener("message", (event) => {
+        const m = event.data;
+        if (!m || typeof m !== "object") return;
+
+        if (m.type === "fred:context") {
+          teamId = m.context?.team?.id ?? null;
+          document.getElementById("ctx").textContent =
+            `${m.context?.team?.name ?? "team"} · protocol v${m.protocolVersion}`;
+          loadFolders();
+          return;
+        }
+        const entry = pending.get(m.requestId);
+        if (!entry) return;
+        pending.delete(m.requestId);
+        if (m.type === "fred:response-error") return entry.reject(new Error("request failed"));
+        if (m.type !== "fred:response") return;
+        if (m.status >= 200 && m.status < 300) {
+          try { entry.resolve(m.body ? JSON.parse(m.body) : null); }
+          catch { entry.reject(new Error("bad JSON")); }
+        } else {
+          entry.reject(new Error(`HTTP ${m.status}`));
+        }
+      });
+
+      const fail = (msg) => { document.getElementById("err").textContent = msg; };
+      const statCard = (n, k) => `<div class="stat"><div class="n">${n}</div><div class="k">${k}</div></div>`;
+
+      async function loadFolders() {
+        if (!teamId) return;
+        try {
+          const data = await hostFetch("folders");
+          const items = data.items || [];
+          const select = document.getElementById("folder");
+          if (!items.length) {
+            select.innerHTML = '<option value="">No document folders</option>';
+            document.getElementById("view").innerHTML =
+              '<div class="empty">This team has no document folders to triage.</div>';
+            return;
+          }
+          select.innerHTML =
+            '<option value="">Choose a folder…</option>' +
+            items.map((f) => `<option value="${esc(f.tag_id)}">${esc(f.path)}</option>`).join("");
+          fail("");
+        } catch (e) {
+          fail(`Could not list folders: ${e.message}`);
+        }
+      }
+
+      function render(data) {
+        const items = data.items || [];
+        const counts = data.counts || {};
+        const stats = `
+          <div class="stats">
+            ${statCard(data.total ?? items.length, "documents")}
+            ${statCard(counts.reviewed || 0, "reviewed")}
+            ${statCard(counts.needs_work || 0, "needs work")}
+            ${statCard(counts.unreviewed || 0, "untouched")}
+          </div>`;
+
+        const list = items.length
+          ? items.map((d) => `
+              <div class="doc" data-slug="${esc(d.slug)}">
+                <div class="row">
+                  <span class="name">${esc(d.document_name)}</span>
+                  <span class="pill ${esc(d.mark)}">${esc(d.mark.replace("_", " "))}</span>
+                </div>
+                ${d.note ? `<div class="note">${esc(d.note)}${d.updated_at ? ` · ${esc(d.updated_at)}` : ""}</div>` : ""}
+                <div class="actions">
+                  <input placeholder="Add a note (optional)" value="${esc(d.note || "")}" />
+                  <button data-mark="reviewed">Reviewed</button>
+                  <button data-mark="needs_work">Needs work</button>
+                  <button class="ghost" data-mark="unreviewed">Clear</button>
+                </div>
+              </div>`).join("")
+          : '<div class="empty">This folder has no documents.</div>';
+
+        document.getElementById("view").innerHTML = stats + list;
+
+        for (const card of document.querySelectorAll(".doc")) {
+          const slug = card.dataset.slug;
+          const item = items.find((d) => d.slug === slug);
+          const input = card.querySelector("input");
+          for (const button of card.querySelectorAll("button[data-mark]")) {
+            button.addEventListener("click", () => mark(item, button.dataset.mark, input.value));
+          }
+        }
+      }
+
+      async function mark(item, value, note) {
+        try {
+          // The uid travels in the body, never in the URL: it is an internal
+          // identifier, and the server re-derives the slug from it to check
+          // this client did not invent one.
+          await hostFetch(`board/${encodeURIComponent(item.slug)}/mark`, {
+            method: "POST",
+            body: JSON.stringify({
+              document_uid: item.document_uid,
+              document_name: item.document_name,
+              mark: value,
+              note: note || "",
+            }),
+          });
+          fail("");
+          load(true);
+        } catch (e) {
+          fail(`Could not save: ${e.message}`);
+        }
+      }
+
+      async function load(force) {
+        if (!teamId || !tagId || loading) return;
+        // Do not redraw underneath someone typing a note.
+        if (!force && document.activeElement?.tagName === "INPUT") return;
+        loading = true;
+        try {
+          render(await hostFetch(`board?tag_id=${encodeURIComponent(tagId)}`));
+          fail("");
+        } catch (e) {
+          fail(`Could not load: ${e.message}`);
+        } finally {
+          loading = false;
+        }
+      }
+
+      document.getElementById("folder").addEventListener("change", (event) => {
+        tagId = event.target.value || null;
+        document.getElementById("view").innerHTML = "";
+        load(true);
+      });
+
+      // `fred:open-chat` names no destination — the host picks where it lands.
+      // Nothing about the board travels through it: the agent reads the board
+      // itself, with its own runtime identity.
+      document.getElementById("ask").addEventListener("click", () => {
+        post({ type: "fred:open-chat", sessionId: null });
+      });
+
+      // No push channel exists, so triage done elsewhere arrives by polling.
+      setInterval(() => load(false), 10000);
+
+      // Announce last: the host replies with fred:context, which starts the load.
+      post({ type: "fred:ready", protocolVersion: PROTOCOL_VERSION });
+    </script>
+  </body>
+</html>

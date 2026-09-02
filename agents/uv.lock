@@ -485,6 +485,38 @@ wheels = [
 ]
 
 [[package]]
+name = "fred-capability-document-triage"
+version = "0.1.0"
+source = { editable = "../apps/document-triage/capability" }
+dependencies = [
+    { name = "fred-sdk" },
+    { name = "langchain-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fred-sdk", specifier = ">=3.3.5" },
+    { name = "langchain-core" },
+]
+
+[[package]]
+name = "fred-capability-progress-tracker"
+version = "0.1.0"
+source = { editable = "../apps/progress-tracker/capability" }
+dependencies = [
+    { name = "fred-sdk" },
+    { name = "httpx" },
+    { name = "langchain-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fred-sdk", specifier = ">=3.3.5" },
+    { name = "httpx" },
+    { name = "langchain-core" },
+]
+
+[[package]]
 name = "fred-core"
 version = "3.4.7"
 source = { registry = "https://pypi.org/simple" }
@@ -554,6 +586,8 @@ name = "fred-samples-agents"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fred-capability-document-triage" },
+    { name = "fred-capability-progress-tracker" },
     { name = "fred-runtime" },
     { name = "fred-sdk" },
     { name = "greenlet" },
@@ -574,6 +608,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fred-capability-document-triage", editable = "../apps/document-triage/capability" },
+    { name = "fred-capability-progress-tracker", editable = "../apps/progress-tracker/capability" },
     { name = "fred-runtime", specifier = ">=3.3.7" },
     { name = "fred-sdk", specifier = ">=3.3.5" },
     { name = "greenlet", specifier = ">=3.4.0" },

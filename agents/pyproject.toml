@@ -10,7 +10,19 @@ dependencies = [
   "fred-runtime>=3.3.7",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
+  # Sample capability from apps/progress-tracker. Installing it IS the
+  # registration, but it contributes no tools until PROGRESS_TRACKER_API_BASE
+  # is set, so the pod is unchanged until you deploy that application.
+  "fred-capability-progress-tracker",
+  # Sample capability from apps/document-triage. Read-only: it holds no
+  # credential and contributes tools only when the runtime injects the document
+  # ports it reads.
+  "fred-capability-document-triage",
 ]
+
+[tool.uv.sources]
+fred-capability-progress-tracker = { path = "../apps/progress-tracker/capability", editable = true }
+fred-capability-document-triage = { path = "../apps/document-triage/capability", editable = true }
 
 [project.optional-dependencies]
 dev = [

@@ -21,6 +21,7 @@ Edit this section after cloning or renaming the repository. Treat these values a
 | `PYTHON_IMPORT_NAME` | `<python_import_name>` | Python import name of the sample agent package. |
 | `CONFIG_DIR` | `<config-dir>` | Directory containing runtime or agent configuration, if any. |
 | `MCP_SERVERS_DIR` | `<mcp-servers-dir>` | Directory containing sample MCP servers, if any. |
+| `APPS_DIR` | `<apps-dir>` | Directory containing sample Fred applications (UI + service + capability), if any. |
 | `DOCKERFILES_DIR` | `<dockerfiles-dir>` | Directory containing container build assets, if any. |
 | `REFERENCE_FRED_REPOSITORY` | `<fred-repository-path-or-url>` | Upstream Fred repository used as implementation reference. |
 | `REFERENCE_AGENT_PACKAGE` | `<fred-agent-package-path>` | Upstream Fred agent package used as style/integration reference. |
@@ -71,9 +72,35 @@ Typical areas may include:
 <AGENT_PACKAGE_DIR>/<PYTHON_PACKAGE_DIR>/  Python sample agents
 <AGENT_PACKAGE_DIR>/<CONFIG_DIR>/     Agent or runtime configuration, if present
 <MCP_SERVERS_DIR>/                    Sample MCP servers, if present
+<APPS_DIR>/                           Sample Fred applications, if present
 <DOCKERFILES_DIR>/                    Container build assets, if present
 README.md                            User-facing repository guide
 ```
+
+A sample application is not a sample agent: it ships its own container images
+and is deployed alongside Fred rather than loaded into the agent pod. Its only
+link to `AGENT_PACKAGE_DIR` is an optional capability package that the pod
+depends on. Keep that dependency one-way — the agent package must never import
+from `APPS_DIR`.
+
+Each application folder name is also its `app_id`, and that id appears in the
+nginx prefix, the deployment manifest, the control-plane catalog and the gateway
+routes. Renaming a folder means changing all of them together.
+
+`APPS_DIR` currently holds two applications and one shared deployment guide:
+
+| Path | Who writes the record | Needs a secret |
+|---|---|---|
+| `<APPS_DIR>/document-triage/` | the human, under their own bearer | no |
+| `<APPS_DIR>/progress-tracker/` | agents, through the app's own API | yes |
+| `<APPS_DIR>/DEPLOYMENT.md` | shared guide covering both | — |
+
+Prefer the `document-triage` shape when adding a new application. Agents may
+read team-shared files but may only mutate inside their own subtree (FILES-04,
+"agents never share"), so an application whose agents write shared state has to
+keep that state outside Fred and reach it with a credential Fred neither issues
+nor validates. `progress-tracker` documents that cost; do not repeat it without
+a reason.
 
 Not every repository clone must contain every optional area. Inspect the actual tree before changing files.
 
