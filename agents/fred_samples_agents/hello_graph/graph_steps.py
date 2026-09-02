@@ -101,7 +101,6 @@ async def classify_step(
         await thought.write(f"User said: {state.latest_user_text!r}")
         result = await intent_router_step(
             context,
-            operation="classify_message",
             route_model=MessageKind,
             system_prompt=_CLASSIFY_SYSTEM_PROMPT,
             user_prompt=state.latest_user_text,
@@ -110,7 +109,9 @@ async def classify_step(
             state_update_builder=lambda d: {"kind": d.kind},
         )
         next_step = "greet" if result.route_key == "greeting" else "answer"
-        await thought.conclude(f"Classified as '{result.route_key}' — routing to {next_step}.")
+        await thought.conclude(
+            f"Classified as '{result.route_key}' — routing to {next_step}."
+        )
     return result
 
 
@@ -131,7 +132,6 @@ async def greet_step(
     context.emit_status("greet", "Saying hello.")
     response = await model_text_step(
         context,
-        operation="greet",
         system_prompt=_GREET_SYSTEM_PROMPT,
         user_prompt=state.latest_user_text,
         fallback_text="Hello! Ask me anything.",
@@ -156,7 +156,6 @@ async def answer_step(
     context.emit_status("answer", "Thinking.")
     response = await model_text_step(
         context,
-        operation="answer_question",
         system_prompt=_ANSWER_SYSTEM_PROMPT,
         user_prompt=state.latest_user_text,
         fallback_text="I couldn't come up with an answer just now — try rephrasing?",

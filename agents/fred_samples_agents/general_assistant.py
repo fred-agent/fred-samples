@@ -24,7 +24,7 @@ How to use it:
 - chat with it using `fred-agents-cli` without starting any other service
 
 Example:
-- `from fred_agents.general_assistant import GENERAL_ASSISTANT_AGENT`
+- `from fred_samples_agents.general_assistant import GENERAL_ASSISTANT_AGENT`
 """
 
 from fred_sdk.contracts.models import ReActAgentDefinition, ReActPolicy

@@ -130,6 +130,9 @@ async def analyze_intent_step(
     - the workflow must branch early: business transfer vs conversational fallback
     - transfer parameters (source, destination, amount) are extracted in the same
       structured call to avoid a second model round-trip before account loading
+    - wraps the decision in a `context.thinking()` block so the routing choice
+      is visible in the frontend's "Thought" trace panel — `emit_status` alone
+      is a fire-and-forget signal that is never persisted or shown in the UI
 
     How to use:
     - place as the entry node; declare "transfer_request" and "conversational"
@@ -144,25 +147,35 @@ async def analyze_intent_step(
     ```
     """
     context.emit_status("analyze_intent", "Understanding your request.")
-    return await intent_router_step(
-        context,
-        operation="analyze_intent",
-        route_model=TransferIntent,
-        system_prompt=_INTENT_SYSTEM_PROMPT,
-        user_prompt=state.latest_user_text,
-        fallback_output={
-            "intent": "conversational",
-            "source_account_id": None,
-            "destination_account_id": None,
-            "amount": None,
-        },
-        route_field="intent",
-        state_update_builder=lambda d: {
-            "source_account_id": d.source_account_id,
-            "destination_account_id": d.destination_account_id,
-            "transfer_amount": d.amount,
-        },
-    )
+    async with context.thinking("planning", title="Classifying the request") as thought:
+        await thought.write(f"User said: {state.latest_user_text!r}")
+        result = await intent_router_step(
+            context,
+            route_model=TransferIntent,
+            system_prompt=_INTENT_SYSTEM_PROMPT,
+            user_prompt=state.latest_user_text,
+            fallback_output={
+                "intent": "conversational",
+                "source_account_id": None,
+                "destination_account_id": None,
+                "amount": None,
+            },
+            route_field="intent",
+            state_update_builder=lambda d: {
+                "source_account_id": d.source_account_id,
+                "destination_account_id": d.destination_account_id,
+                "transfer_amount": d.amount,
+            },
+        )
+        next_step = (
+            "load_account"
+            if result.route_key == "transfer_request"
+            else "answer_conversationally"
+        )
+        await thought.conclude(
+            f"Classified as '{result.route_key}' — routing to {next_step}."
+        )
+    return result
 
 
 # ── Step: answer_conversationally ─────────────────────────────────────────────
@@ -186,7 +199,6 @@ async def answer_conversationally_step(
     context.emit_status("answer", "Preparing response.")
     response = await model_text_step(
         context,
-        operation="conversational_answer",
         system_prompt=_CONVERSATIONAL_SYSTEM_PROMPT,
         user_prompt=state.latest_user_text,
         fallback_text=(
@@ -339,29 +351,48 @@ async def evaluate_risk_step(
     - amount > 2000 EUR: +40
     - external destination (EXT-*): +50
     - requires_validation when score >= 50
+
+    Wraps the decision in a `context.thinking()` block so the risk assessment
+    is visible in the frontend's "Thought" trace panel — `emit_status` alone
+    is a fire-and-forget signal that is never persisted or shown in the UI.
+    This matters most on the low-risk path, where nothing else in the
+    workflow ever explains why the transfer proceeded without a HITL gate.
     """
     context.emit_status("evaluate_risk", "Evaluating transfer risk.")
 
-    raw = await context.invoke_runtime_tool(
-        "evaluate_transfer_risk",
-        {
-            "source_id": state.source_account_id,
-            "destination_id": state.destination_account_id,
-            "amount": state.transfer_amount,
-        },
-    )
-    result = raw if isinstance(raw, dict) else {}
+    async with context.thinking("planning", title="Assessing transfer risk") as thought:
+        await thought.write(
+            f"Checking risk for {state.transfer_amount} from "
+            f"{state.source_account_id} to {state.destination_account_id}."
+        )
 
-    risk_score = int(result.get("risk_score", 0))
-    risk_reason = str(result.get("reason", ""))
-    requires_validation = bool(result.get("requires_validation", False))
+        raw = await context.invoke_runtime_tool(
+            "evaluate_transfer_risk",
+            {
+                "source_id": state.source_account_id,
+                "destination_id": state.destination_account_id,
+                "amount": state.transfer_amount,
+            },
+        )
+        result = raw if isinstance(raw, dict) else {}
 
-    state_update = {"risk_score": risk_score, "risk_reason": risk_reason}
+        risk_score = int(result.get("risk_score", 0))
+        risk_reason = str(result.get("reason", ""))
+        requires_validation = bool(result.get("requires_validation", False))
 
-    if requires_validation:
-        return StepResult(state_update=state_update, route_key="high_risk")
+        state_update = {"risk_score": risk_score, "risk_reason": risk_reason}
 
-    return StepResult(state_update=state_update, route_key="low_risk")
+        if requires_validation:
+            await thought.conclude(
+                f"Risk score {risk_score}/100 ({risk_reason or 'see risk policy'}) — "
+                "requires explicit user confirmation."
+            )
+            return StepResult(state_update=state_update, route_key="high_risk")
+
+        await thought.conclude(
+            f"Risk score {risk_score}/100 — within tolerance, proceeding."
+        )
+        return StepResult(state_update=state_update, route_key="low_risk")
 
 
 # ── Step: confirm_risk ────────────────────────────────────────────────────────

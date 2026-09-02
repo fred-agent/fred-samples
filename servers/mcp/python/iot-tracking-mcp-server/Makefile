@@ -22,7 +22,7 @@ venv:
 
 install: venv
 	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install fastapi uvicorn "mcp[fastapi]"
+	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
 
 run server: install
 	$(UVICORN) $(APP_MODULE) --host $(HOST) --port $(PORT) --reload

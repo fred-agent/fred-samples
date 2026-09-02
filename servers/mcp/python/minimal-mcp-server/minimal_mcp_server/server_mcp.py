@@ -39,7 +39,7 @@ _PACKAGES: Dict[str, Dict[str, Any]] = {}
 
 
 # Create a FastMCP server (provides @tool and compatible transports)
-server = FastMCP(name="postal-mcp")
+server = FastMCP(name="minimal-mcp")
 
 
 @server.tool()

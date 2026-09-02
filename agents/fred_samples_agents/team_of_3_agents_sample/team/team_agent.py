@@ -44,4 +44,3 @@ class TeamOf3RouterSample(TeamAgent):
 
 
 TEAM3_ROUTER_TEAM = TeamOf3RouterSample()
-

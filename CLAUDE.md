@@ -60,6 +60,29 @@ Before changing runtime integration code, check the installed versions of:
 
 ---
 
+## Local runtime & observability — `configuration.yaml` vs `configuration_prod.yaml`
+
+This repository ships **two** config profiles per app (currently: `agents/config/configuration.yaml`
+and `agents/config/configuration_prod.yaml`), and it matters which one is active — do not treat
+them as interchangeable or assume `.env`'s current `CONFIG_FILE` value without checking it:
+
+- `configuration.yaml` (security off, no infra) — the intentional 5-minute quick start: `cp
+  agents/config/env.template agents/config/.env`, `make chat`. Use this when the task is exploring
+  or modifying sample agent code with no real platform behind it.
+- `configuration_prod.yaml` (security on: Keycloak, OpenFGA, Postgres, OpenSearch) — required for
+  anything that needs the pod to behave like it would in a real Fred deployment: manual
+  observability/log-watching sessions, KPI/metrics checks, or reproducing an auth-dependent bug.
+  This profile expects the shared infra from the sibling `~/Fred/fred-deployment-factory` repo to
+  be running.
+
+For a real observability session, use the `.claude/skills/live-observability-session` skill in
+this repo — it enforces switching `agents/config/.env`'s `CONFIG_FILE` to
+`configuration_prod.yaml` before starting anything, and documents the exact ports/preconditions.
+Never leave this ambiguous: if `.env` doesn't already point at the profile the task actually needs,
+fix it and say so rather than proceeding on whatever it happened to be set to.
+
+---
+
 ## Repository structure
 
 Use the repository parameters above instead of assuming fixed folder names.

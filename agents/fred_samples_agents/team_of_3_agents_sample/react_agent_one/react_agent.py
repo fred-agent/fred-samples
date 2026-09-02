@@ -22,4 +22,3 @@ If a request is outside this scope, say so briefly.
 
 
 TEAM3_REACT_AGENT_ONE = Team3ReActMathAgent()
-

@@ -23,4 +23,3 @@ __all__ = [
     "TEAM3_REACT_AGENT_TWO_ID",
     "TEAM3_ROUTER_TEAM",
 ]
-

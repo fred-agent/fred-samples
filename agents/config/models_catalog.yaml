@@ -48,5 +48,3 @@ profiles:
       name: gpt-4o
       settings:
         base_url: http://localhost:8383/v1
-
-rules: []

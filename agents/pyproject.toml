@@ -6,15 +6,24 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
-  "fred-sdk>=3.3.5",
-  "fred-runtime>=3.3.7",
+  # 3.4.0 is intentionally excluded: the published fred-sdk==3.4.0 /
+  # fred-runtime==3.4.0 pair is mismatched (fred_runtime.app.agent_app
+  # imports TeamOperationRouteRule, which does not exist in fred_sdk
+  # 3.4.0) — confirmed broken 2026-08-01, fixed by the 3.4.1 publish.
+  "fred-sdk>=3.4.1",
+  "fred-runtime>=3.4.2",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "bandit[baseline]>=1.8.6",
+  "basedpyright==1.31.0",
+  "detect-secrets>=1.5.0",
   "pytest>=8.4.2",
+  "pytest-cov>=6.2.1",
+  "pytest-socket>=0.7.0",
   "ruff>=0.12.5",
 ]
 
@@ -27,7 +36,28 @@ include = ["fred_samples_agents*"]
 
 [dependency-groups]
 dev = [
+  "bandit[baseline]>=1.8.6",
+  "basedpyright==1.31.0",
+  "detect-secrets>=1.5.0",
   "pytest>=8.4.2",
+  "pytest-cov>=6.2.1",
+  "pytest-socket>=0.7.0",
   "ruff>=0.12.5",
 ]
 
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+markers = ["integration: marks tests that require external services"]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+# Local path override for development against this monorepo's own fred-sdk /
+# fred-runtime, sibling to this repo under ~/Fred. Same convention as
+# fred/libs/fred-sdk's own [tool.uv.sources] — keeps `uv run`/`uv sync` from
+# silently reverting to the PyPI versions after a manual local install (an
+# ad-hoc `uv pip install --editable` does NOT persist across the next
+# `uv run`, which always re-syncs against this table first). Comment out to
+# force PyPI resolution, or use `make dev-pypi`.
+fred-sdk = { path = "../../fred/libs/fred-sdk", editable = true }
+fred-runtime = { path = "../../fred/libs/fred-runtime", editable = true }

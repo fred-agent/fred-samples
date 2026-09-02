@@ -535,76 +535,94 @@ async def analyze_intent_step(
 
     context.emit_status("analyze_intent", "Understanding your request.")
     system_prompt = _build_intent_system_prompt(state.tracking_id)
-    raw = await intent_router_step(
-        context,
-        operation="postal_analyze_intent",
-        route_model=PostalIntent,
-        system_prompt=system_prompt,
-        user_prompt=state.latest_user_text,
-        fallback_output={
-            "intent": "conversational",
-            "tracking_id": None,
-            "wants_map": False,
-            "wants_pickup_points": False,
-            "wants_reroute": False,
-        },
-        route_field="intent",
-        state_update_builder=lambda d: {
-            # Only overwrite tracking_id when the model found a new one
-            **({"tracking_id": d.tracking_id} if d.tracking_id else {}),
-            "wants_map": d.wants_map,
-            "wants_pickup_points": d.wants_pickup_points,
-            "wants_reroute": d.wants_reroute,
-        },
-    )
 
-    route_key = raw.route_key
-    update = dict(raw.state_update)
+    async with context.thinking("planning", title="Classifying the request") as thought:
+        await thought.write(f"User said: {state.latest_user_text!r}")
+        if state.tracking_id:
+            await thought.write(
+                f"Active parcel already in context: {state.tracking_id}"
+            )
 
-    # Heuristic fallbacks — catch keywords the model may have missed.
-    # Note: wants_map and wants_pickup_points are intentionally independent.
-    # "Où est mon colis ?" → map, not pickup points.
-    # "Montre-moi les relais" → pickup points, not necessarily map.
-    lowered = state.latest_user_text.casefold()
-    if not update.get("wants_map") and any(
-        w in lowered
-        for w in ("map", "carte", "route", "trajet", "position", "localisation")
-    ):
-        update["wants_map"] = True
-
-    if not update.get("wants_pickup_points") and any(
-        w in lowered
-        for w in ("relais", "pickup", "locker", "point de retrait", "point relais")
-    ):
-        update["wants_pickup_points"] = True
-
-    if not update.get("wants_reroute") and any(
-        w in lowered
-        for w in (
-            "réacheminer",
-            "reacheminer",
-            "réacheminement",
-            "reroute",
-            "rediriger",
-            "point relais",
-            "relais le plus proche",
-            "livrer à un point",
+        raw = await intent_router_step(
+            context,
+            route_model=PostalIntent,
+            system_prompt=system_prompt,
+            user_prompt=state.latest_user_text,
+            fallback_output={
+                "intent": "conversational",
+                "tracking_id": None,
+                "wants_map": False,
+                "wants_pickup_points": False,
+                "wants_reroute": False,
+            },
+            route_field="intent",
+            state_update_builder=lambda d: {
+                # Only overwrite tracking_id when the model found a new one
+                **({"tracking_id": d.tracking_id} if d.tracking_id else {}),
+                "wants_map": d.wants_map,
+                "wants_pickup_points": d.wants_pickup_points,
+                "wants_reroute": d.wants_reroute,
+            },
         )
-    ):
-        update["wants_reroute"] = True
-        update["wants_pickup_points"] = True
 
-    # Guardrail: if the user is acting on the active parcel (reroute, pickup, map)
-    # but the model routed to conversational, promote to track_request.
-    # This handles messages like "est-il possible de le réacheminer ?" where the
-    # model has no tracking id in the message to anchor on.
-    action_flags = (
-        update.get("wants_reroute")
-        or update.get("wants_pickup_points")
-        or update.get("wants_map")
-    )
-    if route_key == "conversational" and action_flags and state.tracking_id:
-        route_key = "track_request"
+        route_key = raw.route_key
+        update = dict(raw.state_update)
+
+        # Heuristic fallbacks — catch keywords the model may have missed.
+        # Note: wants_map and wants_pickup_points are intentionally independent.
+        # "Où est mon colis ?" → map, not pickup points.
+        # "Montre-moi les relais" → pickup points, not necessarily map.
+        lowered = state.latest_user_text.casefold()
+        if not update.get("wants_map") and any(
+            w in lowered
+            for w in ("map", "carte", "route", "trajet", "position", "localisation")
+        ):
+            update["wants_map"] = True
+
+        if not update.get("wants_pickup_points") and any(
+            w in lowered
+            for w in ("relais", "pickup", "locker", "point de retrait", "point relais")
+        ):
+            update["wants_pickup_points"] = True
+
+        if not update.get("wants_reroute") and any(
+            w in lowered
+            for w in (
+                "réacheminer",
+                "reacheminer",
+                "réacheminement",
+                "reroute",
+                "rediriger",
+                "point relais",
+                "relais le plus proche",
+                "livrer à un point",
+            )
+        ):
+            update["wants_reroute"] = True
+            update["wants_pickup_points"] = True
+
+        # Guardrail: if the user is acting on the active parcel (reroute, pickup, map)
+        # but the model routed to conversational, promote to track_request.
+        # This handles messages like "est-il possible de le réacheminer ?" where the
+        # model has no tracking id in the message to anchor on.
+        action_flags = (
+            update.get("wants_reroute")
+            or update.get("wants_pickup_points")
+            or update.get("wants_map")
+        )
+        if route_key == "conversational" and action_flags and state.tracking_id:
+            await thought.write(
+                "Message acts on the active parcel but the model said "
+                "'conversational' — promoting to track_request."
+            )
+            route_key = "track_request"
+
+        await thought.conclude(
+            f"Classified as '{route_key}' "
+            f"(map={update.get('wants_map')}, "
+            f"pickup_points={update.get('wants_pickup_points')}, "
+            f"reroute={update.get('wants_reroute')})."
+        )
 
     return StepResult(state_update=update, route_key=route_key)
 
@@ -636,7 +654,6 @@ async def answer_conversationally_step(
     system_prompt = _build_conversational_system_prompt(state.tracking_id)
     response = await model_text_step(
         context,
-        operation="postal_conversational",
         system_prompt=system_prompt,
         user_prompt=state.latest_user_text,
         fallback_text=(
@@ -848,7 +865,6 @@ async def load_tracking_step(
     )
     summary = await model_text_step(
         context,
-        operation="postal_tracking_summary",
         system_prompt=_TRACKING_SUMMARY_SYSTEM_PROMPT,
         user_prompt=(
             f"User question: {state.latest_user_text}\n\n"
@@ -868,10 +884,30 @@ async def load_tracking_step(
         "final_text": summary,
     }
 
-    return StepResult(
-        state_update=state_update,
-        route_key="reroute" if wants_reroute and pickup_points else "ok",
-    )
+    async with context.thinking(
+        "reflection", title="Checking reroute eligibility"
+    ) as thought:
+        await thought.write(
+            f"wants_reroute={wants_reroute}, pickup points found={len(pickup_points)}."
+        )
+        if wants_reroute and pickup_points:
+            route_key = "reroute"
+            await thought.conclude(
+                f"Reroute requested and {len(pickup_points)} pickup point(s) "
+                "available — routing to confirm_reroute."
+            )
+        else:
+            route_key = "ok"
+            reason = (
+                "no pickup points available near the delivery address"
+                if wants_reroute
+                else "no reroute requested"
+            )
+            await thought.conclude(
+                f"Not rerouting ({reason}) — finalizing with the tracking summary."
+            )
+
+    return StepResult(state_update=state_update, route_key=route_key)
 
 
 @typed_node(PostalTrackingState)
@@ -1025,7 +1061,6 @@ async def execute_reroute_step(
     )
     confirmation = await model_text_step(
         context,
-        operation="postal_reroute_confirmation",
         system_prompt=_REROUTE_SUMMARY_SYSTEM_PROMPT,
         user_prompt=json.dumps(reroute_context, indent=2),
         fallback_text=fallback,

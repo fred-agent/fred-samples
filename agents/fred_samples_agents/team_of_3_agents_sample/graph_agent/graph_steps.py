@@ -1,4 +1,10 @@
-from fred_sdk import GraphNodeContext, GraphNodeResult, StepResult, finalize_step, typed_node
+from fred_sdk import (
+    GraphNodeContext,
+    GraphNodeResult,
+    StepResult,
+    finalize_step,
+    typed_node,
+)
 
 from .graph_state import Team3GraphState
 
@@ -38,7 +44,9 @@ async def classify_request_step(
                 route_key="rejected",
             )
 
-        await thought.conclude("No approval/rejection keyword — decision: NEEDS_REVIEW.")
+        await thought.conclude(
+            "No approval/rejection keyword — decision: NEEDS_REVIEW."
+        )
         return StepResult(
             state_update={
                 "decision": "needs_review",
@@ -49,7 +57,9 @@ async def classify_request_step(
 
 
 @typed_node(Team3GraphState)
-async def approved_step(state: Team3GraphState, context: GraphNodeContext) -> StepResult:
+async def approved_step(
+    state: Team3GraphState, context: GraphNodeContext
+) -> StepResult:
     context.emit_status("approved")
     return StepResult(
         state_update={
@@ -61,7 +71,9 @@ async def approved_step(state: Team3GraphState, context: GraphNodeContext) -> St
 
 
 @typed_node(Team3GraphState)
-async def rejected_step(state: Team3GraphState, context: GraphNodeContext) -> StepResult:
+async def rejected_step(
+    state: Team3GraphState, context: GraphNodeContext
+) -> StepResult:
     context.emit_status("rejected")
     return StepResult(
         state_update={

@@ -28,8 +28,8 @@ venv:
 install: venv
 	@echo "Installing/Upgrading dependencies in $(VENV_DIR)..."
 	$(PYTHON) -m pip install --upgrade pip
-	# Install FastAPI, Uvicorn, and the MCP SDK with FastAPI extras
-	$(PYTHON) -m pip install fastapi uvicorn "mcp[fastapi]"
+	# Install FastAPI, Uvicorn, and the MCP SDK (pinned to a verified-working version)
+	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
 
 # 3. Run the server (Requires install)
 run: install

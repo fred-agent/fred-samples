@@ -51,4 +51,3 @@ class Team3GraphChildAgent(GraphAgent):
 
 
 TEAM3_GRAPH_AGENT = Team3GraphChildAgent()
-
