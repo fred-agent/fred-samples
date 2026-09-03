@@ -31,6 +31,9 @@ No MCP servers required — just a configured model.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import ClassVar
+
 from fred_sdk import GraphAgent, GraphWorkflow
 
 from .graph_state import HelloGraphInput, HelloGraphState
@@ -67,7 +70,7 @@ class HelloGraphAgent(GraphAgent):
 
     input_schema = HelloGraphInput
     state_schema = HelloGraphState
-    input_to_state = {"message": "latest_user_text"}
+    input_to_state: ClassVar[Mapping[str, str]] = {"message": "latest_user_text"}
     output_state_field = "final_text"
 
     workflow = GraphWorkflow(

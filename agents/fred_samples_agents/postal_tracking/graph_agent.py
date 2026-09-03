@@ -33,6 +33,9 @@ MCP servers required:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import ClassVar
+
 from fred_sdk import (
     GraphAgent,
     GraphExecutionOutput,
@@ -95,7 +98,7 @@ class PostalTrackingGraphAgent(GraphAgent):
 
     input_schema = PostalTrackingInput
     state_schema = PostalTrackingState
-    input_to_state = {"message": "latest_user_text"}
+    input_to_state: ClassVar[Mapping[str, str]] = {"message": "latest_user_text"}
     output_state_field = "final_text"
 
     workflow = GraphWorkflow(
