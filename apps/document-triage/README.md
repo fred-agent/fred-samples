@@ -21,6 +21,7 @@ deliberately small enough to read in one sitting.
 | --- | --- |
 | An application is its owner's images | `ui/` and `api/`, built and deployed independently |
 | The frame holds no credential | the UI asks the host; the host attaches the bearer |
+| The bearer is checked twice | locally, for authenticity; via the Control Plane, for authorization |
 | The service authorizes itself | every handler asks the Control Plane; the gateway does not |
 | Two independent gates | the Control Plane gates the *team*; Knowledge Flow gates the *user* |
 | Agents read platform data | `document_folders` + `document_summarize`, tokens held by the adapter |
@@ -39,6 +40,27 @@ Every path and identifier is derived from a single `app_id`. To turn this into
 a different application, copy the directory and change `APP_ID` (an environment
 variable read by `api/app.py`), the nginx prefix in `ui/Dockerfile`, and the
 names in `deploy.yaml`.
+
+## The bearer is checked twice, for two different reasons
+
+Every request that reaches `require_entitled` (`api/auth_jwt.py`,
+`api/app.py`) is checked twice, and neither check can stand in for the other:
+
+1. **Locally, for authenticity** — is this a genuine, unexpired,
+   correctly-signed token issued by *our* Keycloak? `verify_bearer` resolves
+   the signing key from Keycloak's public JWKS and verifies the RS256
+   signature, expiry and issuer, with no network call to Fred and no secret
+   of its own. This runs first, so a garbage or expired bearer fails fast
+   with a `401` before the round trip below.
+2. **Via the Control Plane, for authorization** — may *this team* use *this
+   application*? That is an OpenFGA fact, not something the token carries:
+   Fred deliberately strips permission and group data out of the JWT (Keycloak
+   authenticates, OpenFGA authorizes — no exceptions), so it can only be
+   answered by asking the Control Plane, exactly as before.
+
+A token can pass the first check and still fail the second — a real person
+whose team was never granted this application — and the reverse can never
+happen, because a token that fails the first check never reaches the second.
 
 ## How it fits together
 
@@ -118,7 +140,10 @@ curl -i http://127.0.0.1:8000/healthz                      # 200
 curl -i http://127.0.0.1:8000/teams/demo/folders           # 401, no bearer
 ```
 
-With a bearer but no `CONTROL_PLANE_BASE` it is a `403`
+With a bearer but no `KEYCLOAK_REALM_URL` it is a `403`
+(`jwt_verification_unconfigured`) — local verification runs before anything
+else, so a missing Keycloak config is caught before the Control Plane is ever
+asked. Locally verified but with no `CONTROL_PLANE_BASE` it is also a `403`
 (`entitlement_check_unconfigured`); entitled but with no `KNOWLEDGE_FLOW_BASE`
 it is a `503`. Every failure closes.
 
@@ -199,6 +224,10 @@ same name works from a shell in the very same pod.
 
 Then a platform administrator grants `app__document-triage` to a team.
 Registration alone grants nothing.
+
+The API needs `CONTROL_PLANE_BASE` for the entitlement check and
+`KEYCLOAK_REALM_URL` for local bearer verification — see [The bearer is
+checked twice](#the-bearer-is-checked-twice-for-two-different-reasons) above.
 
 ## Deploy
 

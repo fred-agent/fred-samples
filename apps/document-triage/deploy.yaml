@@ -8,7 +8,7 @@
 # stores nothing of its own -- every record lives in the team's Knowledge Flow
 # workspace and is written with the caller's own token.
 #
-# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
+# TO ADAPT THIS TO YOUR CLUSTER, edit only the three addresses marked EDIT below.
 ---
 apiVersion: v1
 kind: Namespace
@@ -74,6 +74,11 @@ spec:
             # plane. Substitute your Fred namespace for `fred`.
             - name: CONTROL_PLANE_BASE
               value: http://control-plane-backend.fred.svc.cluster.local:8222
+            # EDIT: Keycloak realm, used to verify the caller's bearer locally
+            # (signature, expiry, issuer) before the entitlement check above.
+            # Substitute your Fred deployment's own realm URL.
+            - name: KEYCLOAK_REALM_URL
+              value: https://keycloak.fred.svc.cluster.local/realms/fred
             # EDIT: Knowledge Flow, which owns both the document corpus and the
             # team workspace. Every call the API makes here carries the
             # caller's own bearer, so Knowledge Flow authorizes per user.

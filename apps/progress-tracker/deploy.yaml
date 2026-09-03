@@ -4,7 +4,7 @@
 # reaches them only by the Service DNS names given in FRONTEND_APPLICATIONS_JSON,
 # which is why an application can live in any namespace.
 #
-# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
+# TO ADAPT THIS TO YOUR CLUSTER, edit only the three addresses marked EDIT below.
 # Everything else is self-contained.
 ---
 apiVersion: v1
@@ -73,6 +73,11 @@ spec:
             # plane. Substitute your Fred namespace for `fred`.
             - name: CONTROL_PLANE_BASE
               value: http://control-plane-backend.fred.svc.cluster.local:8222
+            # EDIT: Keycloak realm, used to verify the caller's bearer locally
+            # (signature, expiry, issuer) before the entitlement check above.
+            # Substitute your Fred deployment's own realm URL.
+            - name: KEYCLOAK_REALM_URL
+              value: https://keycloak.fred.svc.cluster.local/realms/fred
             # EDIT: read-only, used to show the conversations pinned to a task.
             # The caller's own bearer is forwarded, so this reads no one else's
             # chat. Point it at whichever agent pod serves your conversations --

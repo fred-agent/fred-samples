@@ -36,6 +36,8 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from auth_jwt import verify_bearer
+
 # Everything below is driven by this one id, so a copy of this directory
 # becomes a different application by changing it in one place.
 APP_ID = os.environ.get("APP_ID", "document-triage")
@@ -77,10 +79,14 @@ async def require_entitled(
     One call answers both halves, because grants are team to capability: a
     non-member is refused outright, and a member whose team was never granted
     this application sees it absent from the list.
+
+    `verify_bearer` runs first: it proves the token is genuinely Keycloak's,
+    unexpired and untampered, before spending a network round trip asking the
+    Control Plane the separate question of whether this team may use this
+    application.
     """
 
-    if not authorization:
-        raise HTTPException(status_code=401, detail="missing_bearer")
+    verify_bearer(authorization)
     if not CONTROL_PLANE:
         raise HTTPException(status_code=403, detail="entitlement_check_unconfigured")
 

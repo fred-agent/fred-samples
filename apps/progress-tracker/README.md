@@ -21,6 +21,7 @@ deliberately small enough to read in one sitting.
 | --- | --- |
 | An application is its owner's images | `ui/` and `api/`, built and deployed independently |
 | The frame holds no credential | the UI asks the host; the host attaches the bearer |
+| A user bearer is checked twice | locally, for authenticity; via the Control Plane, for authorization |
 | The service authorizes itself | every handler asks the Control Plane; the gateway does not |
 | Agents advance durable state | a capability with tools, not an app-driven pipeline |
 | A conversation finds its record | the session id is pinned on first resolution |
@@ -62,13 +63,41 @@ curl -H 'X-Service-Key: dev-key' -H 'content-type: application/json' \
 curl -H 'X-Service-Key: dev-key' http://127.0.0.1:8000/teams/demo/tasks
 ```
 
-Without that header the same call is a `401`, and with a user bearer instead it
-is a `403` until `CONTROL_PLANE_BASE` points at a real Control Plane — the
-service fails closed in both directions by design.
+Without that header the same call is a `401`. A user bearer instead of the
+service key takes a different path entirely — see [Why the bearer is checked
+twice](#why-the-bearer-is-checked-twice) — and is a `403` until
+`KEYCLOAK_REALM_URL` and `CONTROL_PLANE_BASE` both point at real
+infrastructure. The service fails closed in every direction by design.
 
 The **UI cannot run standalone**. It holds no API address and makes no `fetch`
 call: every request goes to the host frame over `postMessage`, so outside Fred
 it stops at "connecting…". That is the design, not a gap.
+
+## Why the bearer is checked twice
+
+A person's request carries a bearer, and `require_entitled` (`api/auth_jwt.py`,
+`api/app.py`) checks it twice, for two different reasons that neither check
+can answer for the other:
+
+1. **Locally, for authenticity** — is this a genuine, unexpired,
+   correctly-signed token issued by *our* Keycloak? `verify_bearer` resolves
+   the signing key from Keycloak's public JWKS and verifies the RS256
+   signature, expiry and issuer, with no network call to Fred and no secret
+   of its own. This runs first, so a garbage or expired bearer fails fast
+   with a `401` before the Control Plane round trip below, and its return
+   value — the token's verified `sub` — is what `pin_task` and the pending-pin
+   endpoints now use to identify the caller, in place of the unverified decode
+   this module used to do.
+2. **Via the Control Plane, for authorization** — may *this team* use *this
+   application*? That is an OpenFGA fact, not something the token carries:
+   Fred deliberately strips permission and group data out of the JWT (Keycloak
+   authenticates, OpenFGA authorizes — no exceptions), so it can only be
+   answered by asking the Control Plane, exactly as before.
+
+The service-key path (the agents pod's own caller) is unrelated to both of
+these — it carries no bearer at all, and is a separate, already-documented
+mechanism (see [The service key is this sample's own, not a Fred
+mechanism](#the-service-key-is-this-samples-own-not-a-fred-mechanism) below).
 
 ## How a conversation finds its task
 
@@ -243,9 +272,11 @@ same name works from a shell in the very same pod.
 Then a platform administrator grants `app__progress-tracker` to a team.
 Registration alone grants nothing.
 
-The API needs `CONTROL_PLANE_BASE` for the entitlement check. The capability
-needs `PROGRESS_TRACKER_API_BASE`; without it, it contributes no tools rather
-than failing at call time.
+The API needs `CONTROL_PLANE_BASE` for the entitlement check and
+`KEYCLOAK_REALM_URL` for local bearer verification — see [Why the bearer is
+checked twice](#why-the-bearer-is-checked-twice) above. The capability needs
+`PROGRESS_TRACKER_API_BASE`; without it, it contributes no tools rather than
+failing at call time.
 
 ## Before you ship anything modelled on this
 

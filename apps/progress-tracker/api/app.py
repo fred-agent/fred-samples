@@ -16,8 +16,6 @@ application already runs stays a small change.
 
 from __future__ import annotations
 
-import base64
-import json
 import os
 import secrets
 import sqlite3
@@ -31,6 +29,8 @@ import aiosqlite
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from auth_jwt import verify_bearer
 
 # Everything below is driven by this one id, so a copy of this directory
 # becomes a different application by changing it in one place.
@@ -183,14 +183,16 @@ async def require_entitled(
             raise HTTPException(status_code=403, detail="bad_service_key")
         # The two modes are mutually exclusive on purpose: this path asks the
         # Control Plane nothing, so a bearer arriving beside the key has been
-        # vetted by no one, and `_bearer_sub` would still read an identity out
-        # of it. Refusing the combination is what keeps that helper honest.
+        # vetted by no one -- refusing the combination keeps every subject
+        # this module hands out traceable to a token someone actually verified.
         if authorization:
             raise HTTPException(status_code=400, detail="service_key_with_bearer")
         return team_id
 
-    if not authorization:
-        raise HTTPException(status_code=401, detail="missing_bearer")
+    # Proves the token is genuinely Keycloak's, unexpired and untampered,
+    # before spending a network round trip on the separate question of
+    # whether this team may use this application.
+    verify_bearer(authorization)
     if not CONTROL_PLANE:
         raise HTTPException(status_code=403, detail="entitlement_check_unconfigured")
 
@@ -381,47 +383,20 @@ async def pin_session(
         return await _task(db, team_id, handle)
 
 
-def _bearer_sub(authorization: str | None) -> str | None:
-    """Read the caller's subject from a token the Control Plane already accepted.
-
-    Decoding without verifying the signature is only defensible because of
-    that: the bearer path in `require_entitled` has had this exact token
-    accepted upstream, and the service-key path refuses to carry a bearer at
-    all. Lift either condition and this becomes an unauthenticated claim to
-    someone else's identity, so callers must keep treating a `None` return as
-    "no usable subject" rather than falling back to a caller-supplied one.
-    """
-
-    if not authorization or " " not in authorization:
-        return None
-    token = authorization.split(" ", 1)[1]
-    parts = token.split(".")
-    if len(parts) != 3:
-        return None
-    try:
-        payload = parts[1] + "=" * (-len(parts[1]) % 4)
-        claims = json.loads(base64.urlsafe_b64decode(payload))
-    except (ValueError, json.JSONDecodeError):
-        return None
-    sub = claims.get("sub")
-    return sub if isinstance(sub, str) and sub else None
-
-
 def _acting_sub(authorization: str | None, body: PinSession) -> str:
     """Who is this call acting as?
 
     A service-key call carries no user token to read a subject from, so the
     runtime supplies the acting user instead. A browser call always derives it
-    from the bearer, so a person cannot claim someone else's pin by putting a
-    subject in the body.
+    from the verified bearer, so a person cannot claim someone else's pin by
+    putting a subject in the body.
     """
 
-    sub = _bearer_sub(authorization) or (
-        body.user_sub if authorization is None else None
-    )
-    if sub is None:
-        raise HTTPException(status_code=401, detail="unreadable_subject")
-    return sub
+    if authorization is None:
+        if body.user_sub is None:
+            raise HTTPException(status_code=401, detail="unreadable_subject")
+        return body.user_sub
+    return verify_bearer(authorization)
 
 
 @app.post("/teams/{team_id}/tasks/{handle}/discuss")
@@ -437,9 +412,7 @@ async def discuss_next(
     task yet, which is what lets the user just start talking.
     """
 
-    sub = _bearer_sub(authorization)
-    if sub is None:
-        raise HTTPException(status_code=401, detail="unreadable_subject")
+    sub = verify_bearer(authorization)
     async with _db() as db:
         await _task(db, team_id, handle)  # 404s before pinning something unopenable
         await db.execute(
