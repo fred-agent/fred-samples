@@ -82,6 +82,12 @@ this repo — it enforces switching `agents/config/.env`'s `CONFIG_FILE` to
 Never leave this ambiguous: if `.env` doesn't already point at the profile the task actually needs,
 fix it and say so rather than proceeding on whatever it happened to be set to.
 
+A Knowledge Base pod has **no config profile at all** — `fred_sdk.knowledge_base` reads the
+process environment and nothing else, so the equivalent invariant is its `config/.env`, copied
+from the committed `config/env.template`. For a live session on one, use the
+`.claude/skills/live-knowledge-base-session` skill: same protocol, but two-sided (the pod publishes,
+the Control Plane receives) and with no inbound port to curl.
+
 ---
 
 ## Repository structure
