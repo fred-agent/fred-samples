@@ -199,6 +199,19 @@ cd <AGENT_PACKAGE_DIR>
 <TEST_COMMAND>
 ```
 
+Every package that ships its own Makefile exposes the same two targets, and the
+repository root Makefile fans out to all of them — run it from the root before
+reporting a change done:
+
+```bash
+<QUALITY_COMMAND>
+<TEST_COMMAND>
+```
+
+A new package with its own venv and baselines must be added to the root
+Makefile's package list and to `.pre-commit-config.yaml`, or nothing will ever
+check it.
+
 Default validation must not require external cloud services.
 
 If a sample requires a running MCP server or another local dependency, document that requirement clearly instead of hiding it in code.

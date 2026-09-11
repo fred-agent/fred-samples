@@ -5,11 +5,11 @@ repos:
       - id: ruff-check
         args: ["--fix"]
         name: lint
-        files: ^agents/
+        files: ^(agents|knowledge-bases)/
       - id: ruff-format
         name: format
         args: ["--diff"]
-        files: ^agents/
+        files: ^(agents|knowledge-bases)/
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
@@ -21,7 +21,15 @@ repos:
     rev: 1.8.5
     hooks:
       - id: bandit
-        args: ["-r", "-s", "B101,B108", "--", "agents/fred_samples_agents"]
+        args:
+          [
+            "-r",
+            "-s",
+            "B101,B108",
+            "--",
+            "agents/fred_samples_agents",
+            "knowledge-bases/local-folder/fred_samples_local_folder_kb",
+          ]
         name: sast
   - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
     rev: v1.13.0
@@ -30,3 +38,7 @@ repos:
         name: type-check
         files: ^agents/
         args: ["--project", "agents"]
+      - id: basedpyright
+        name: type-check (local-folder KB)
+        files: ^knowledge-bases/local-folder/
+        args: ["--project", "knowledge-bases/local-folder"]
