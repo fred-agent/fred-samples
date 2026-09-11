@@ -32,11 +32,12 @@ Its equivalent is `knowledge-bases/<sample>/config/.env`, copied from the commit
 
     FRED_CONTROL_PLANE_URL="http://localhost:8222/control-plane/v1"   # the API prefix is required
     FRED_KEYCLOAK_REALM_URL="http://localhost:8080/realms/app"
-    FRED_KB_CLIENT_ID="knowledge-base-local-folder"
+    FRED_KB_PROVIDER_ID="fred-samples"                                 # the namespace, not a base
+    FRED_KB_CLIENT_ID="knowledge-base-fred-samples"
     FRED_KB_CLIENT_SECRET="..."
     FRED_TEMPORAL_HOST="localhost:7233"                                # `run` only
 
-Before starting anything, read that file and confirm all five. If `.env` is missing, **say so and
+Before starting anything, read that file and confirm all six. If `.env` is missing, **say so and
 have the developer copy the template** — it is gitignored and per-session, but it carries a
 secret, so it is not yours to fabricate. Two failure modes to recognise instantly rather than
 debug:
@@ -51,15 +52,17 @@ The Makefile exports this file for you (`make publish`, `make run`). Running
 `python -m <package> publish` by hand in a shell that has not sourced it will fail on missing
 environment, and that is not a bug.
 
-## The trap that cannot be undone: first publication binds the identity
+## The trap that cannot be undone: first publication binds the namespace
 
-Fred binds a definition to the client that publishes it first, and **there is no rebinding path in
-the code**. A session that publishes `local-folder` from a convenient existing client — the
-evaluation worker, `agentic`, anything — permanently burns that definition id, and recovering it
-means deleting the row in Postgres by hand.
+A Knowledge Base is named with two segments — `kb__<provider>__<definition>` — and Fred binds the
+**provider** to the client that publishes under it first. There is no rebinding path in the code.
 
-So: never suggest "just try it with another client to see". If an identity experiment is genuinely
-needed, use a throwaway definition id, and tell the developer that is what you are doing and why.
+So a session that publishes from a convenient existing client — the evaluation worker, `agentic`,
+anything — does not burn one definition: it burns the **whole namespace**, and every Knowledge Base
+the image will ever publish under it. Recovering means deleting rows in Postgres by hand.
+
+Never suggest "just try it with another client to see". If an identity experiment is genuinely
+needed, use a throwaway provider id, and tell the developer that is what you are doing and why.
 
 ## Preconditions — infra is the developer's job, not yours
 
@@ -90,6 +93,10 @@ session rather than letting the developer wait for a run that cannot come.
 
 The queue name is derived (`kb-` + definition id), identically on both sides. A worker announcing a
 queue that does not match the definition id is a contract break worth stopping the session for.
+
+Worth watching, because identity and routing disagree today: the queue carries the definition but
+**not** the provider, so two providers publishing a definition of the same name would be dispatched
+the same runs. Nothing exercises that yet — it is a finding to report, not a symptom to expect.
 
 ## Watching, not polling
 
