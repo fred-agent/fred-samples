@@ -17,6 +17,8 @@ fred-samples/
 ├── apps/
 │   ├── document-triage/            Sample application — no secrets, agents read only
 │   └── progress-tracker/           Sample application — UI + API + agent capability
+├── knowledge-bases/
+│   └── local-folder/               Sample Knowledge Base — synchronize Markdown from a folder
 └── servers/
     └── mcp/
         └── python/
@@ -217,6 +219,42 @@ contributing no tools — until its application is reachable.
 
 ---
 
+## Knowledge Bases
+
+A **Knowledge Base** tells Fred where a team's documents come from and how to
+keep them up to date. You declare one with `fred_sdk.knowledge_base`: an
+identity, the configuration an operator fills in, and one async handler that
+reconciles the source and reports what changed.
+
+### Local Folder — sample Knowledge Base
+
+The smallest believable implementation: it synchronizes Markdown files from a
+folder on your own machine, keeps its own ledger of what it already published,
+and reports honest `created` / `updated` / `removed` / `unchanged` counters.
+
+```
+Folder:   knowledge-bases/local-folder/
+Requires: nothing — no model, no MCP server, no cluster
+```
+
+**Sample docs:** [README.md](knowledge-bases/local-folder/README.md)
+
+The image is the whole integration: the SDK gives it two commands, `publish`
+(declare this Knowledge Base to Fred, a deployment step) and `run` (serve runs).
+An author writes no plumbing.
+
+```bash
+cd knowledge-bases/local-folder
+make declaration                   # what `publish` would send to Fred
+make sync ROOT=/path/to/your/notes # one run, with no Fred and no Temporal
+```
+
+Documents will go through Knowledge Flow's REST API, which a run cannot reach
+yet — until then the sample logs what it *would* publish, from one clearly
+marked file.
+
+---
+
 ## Quick start
 
 ### 1. Prerequisites
@@ -285,6 +323,20 @@ List all available agents:
 ```
 /agents
 ```
+
+---
+
+## Validate the repository
+
+Every package owns its venv, its quality baselines and its Makefile; the root
+Makefile fans out to all of them:
+
+```bash
+make test           # every package's offline test suite
+make code-quality   # ruff, bandit, detect-secrets, basedpyright everywhere
+```
+
+Both are offline: no model key, no MCP server, no cluster.
 
 ---
 

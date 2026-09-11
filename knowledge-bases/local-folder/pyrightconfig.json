@@ -1,0 +1,15 @@
+// Pyright config used when opening the project with the workspace in
+// vscode and by the basedpyright CLI (make type-check / make baseline-type-check).
+{
+  "include": ["fred_samples_local_folder_kb", "tests"],
+  "typeCheckingMode": "standard",
+  "reportMissingTypeStubs": false,
+  "reportUnreachable": "warning",
+  "venvPath": ".",
+  "venv": ".venv",
+  // fred-sdk is editable-installed via a PEP 660 import-hook finder, which
+  // basedpyright's static resolver can't follow — same fix as agents/
+  // (extraPaths pointing straight at the source). Only used for type-checking;
+  // the venv resolution above is what actually runs.
+  "extraPaths": ["../../../fred/libs/fred-sdk", "../../../fred/libs/fred-core"]
+}

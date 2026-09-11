@@ -1,0 +1,61 @@
+[project]
+name = "fred-samples-local-folder-kb"
+version = "0.1.0"
+description = "Fred sample Knowledge Base — synchronize Markdown documents from a local folder"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Apache-2.0" }
+dependencies = [
+  # The `knowledge-base` extra brings the workflow engine the `run` command
+  # needs; `publish` and the handler itself do not load it. 3.7.0 is not on
+  # PyPI yet, so `make dev` resolves it from the local monorepo checkout below
+  # and `make dev-pypi` fails on purpose rather than installing an SDK without
+  # the surface this sample needs.
+  "fred-sdk[knowledge-base]>=3.7.0",
+]
+
+# The contract's entry point is `python -m fred_samples_local_folder_kb`
+# (publish / run). This script is the offline developer tool beside it.
+[project.scripts]
+fred-samples-local-folder-kb-dev = "fred_samples_local_folder_kb.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "bandit[baseline]>=1.8.6",
+  "basedpyright==1.31.0",
+  "detect-secrets>=1.5.0",
+  "pytest>=8.4.2",
+  "pytest-cov>=6.2.1",
+  "pytest-socket>=0.7.0",
+  "ruff>=0.12.5",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["fred_samples_local_folder_kb*"]
+
+[dependency-groups]
+dev = [
+  "bandit[baseline]>=1.8.6",
+  "basedpyright==1.31.0",
+  "detect-secrets>=1.5.0",
+  "pytest>=8.4.2",
+  "pytest-cov>=6.2.1",
+  "pytest-socket>=0.7.0",
+  "ruff>=0.12.5",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+markers = ["integration: marks tests that require external services"]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+# Local path override for this monorepo's own fred-sdk, sibling to this repo
+# under ~/Fred — same convention as agents/pyproject.toml, one level deeper.
+# Comment out to force PyPI resolution, or use `make dev-pypi`.
+fred-sdk = { path = "../../../fred/libs/fred-sdk", editable = true }
