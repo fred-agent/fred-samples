@@ -38,10 +38,9 @@ from fred_sdk.knowledge_base import (
     KnowledgeBaseSyncResult,
 )
 
-from fred_samples_local_folder_kb.document_boundary import open_boundary
+from fred_samples_local_folder_kb.document_boundary import SOURCE_TAG, open_boundary
 from fred_samples_local_folder_kb.ledger import (
     Ledger,
-    LedgerEntry,
     LedgerError,
     ledger_path_for,
     load_ledger,
@@ -212,22 +211,26 @@ async def _synchronize(
     published_bytes = 0
 
     removed = 0
-    boundary = open_boundary(library_id=context.library_id, source_tag=kb.id)
+    boundary = open_boundary(library_id=context.library_id, source_tag=SOURCE_TAG)
     try:
         for relative, path, content_hash, size_bytes in scanned:
             known = previous.get(relative)
-            if known is not None and known.content_hash == content_hash:
+            if known == content_hash:
                 unchanged += 1
-                current[relative] = known
+                current[relative] = content_hash
                 continue
             try:
-                document_uid = await boundary.publish(relative_path=relative, path=path)
+                # The hash is this source's version of the file. Fred stores it
+                # and hands it back; it never reads it.
+                await boundary.publish(
+                    relative_path=relative, path=path, version=content_hash
+                )
             except Exception as error:  # noqa: BLE001 - any failure is one file's
                 # Deliberately absent from the ledger, so the next run retries
                 # it; recording it would strand the document unpublished.
                 _add_issue(warnings, "publish_failed", str(error), subject=relative)
                 continue
-            current[relative] = LedgerEntry(content_hash, document_uid)
+            current[relative] = content_hash
             published_bytes += size_bytes
             if known is None:
                 created += 1
@@ -237,19 +240,16 @@ async def _synchronize(
         if truncated:
             # A bounded run has not seen every file, so absence proves nothing:
             # carry the untouched entries forward instead of retracting them.
-            for relative, entry in previous.items():
-                current.setdefault(relative, entry)
+            for relative, content_hash in previous.items():
+                current.setdefault(relative, content_hash)
         else:
             for relative in sorted(set(previous) - seen):
-                entry = previous[relative]
                 try:
-                    await boundary.retract(
-                        relative_path=relative, document_uid=entry.document_uid
-                    )
+                    await boundary.retract(relative_path=relative)
                 except Exception as error:  # noqa: BLE001 - one document's failure
                     # Kept in the ledger: it is still in the library, and a run
                     # that forgot it would never try to take it out again.
-                    current[relative] = entry
+                    current[relative] = previous[relative]
                     _add_issue(warnings, "retract_failed", str(error), subject=relative)
                     continue
                 removed += 1

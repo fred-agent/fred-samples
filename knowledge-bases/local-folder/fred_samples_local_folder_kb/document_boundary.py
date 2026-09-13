@@ -34,19 +34,21 @@ from fred_sdk.knowledge_base.environment import PodEnvironment
 
 logger = logging.getLogger(__name__)
 
-
-class UnknownDocument(RuntimeError):
-    """A ledger entry names no document, so it cannot be taken back."""
+# Which configured document source a write is attributed to. Knowledge Flow
+# resolves this against its own deployment configuration and refuses anything
+# it does not know, so a Knowledge Base cannot name itself here: the vocabulary
+# is the platform's, not a contributor's.
+SOURCE_TAG = "fred"
 
 
 class Boundary(Protocol):
     """What the handler needs from Fred, so a run can be tried without one."""
 
-    async def publish(self, *, relative_path: str, path: Path) -> str | None: ...
-
-    async def retract(
-        self, *, relative_path: str, document_uid: str | None
+    async def publish(
+        self, *, relative_path: str, path: Path, version: str
     ) -> None: ...
+
+    async def retract(self, *, relative_path: str) -> None: ...
 
     async def aclose(self) -> None: ...
 
@@ -54,11 +56,10 @@ class Boundary(Protocol):
 class _LoggingBoundary:
     """Says what it would do. The offline developer tool's boundary."""
 
-    async def publish(self, *, relative_path: str, path: Path) -> str | None:
+    async def publish(self, *, relative_path: str, path: Path, version: str) -> None:
         logger.info("would publish %s (%d bytes)", relative_path, path.stat().st_size)
-        return None
 
-    async def retract(self, *, relative_path: str, document_uid: str | None) -> None:
+    async def retract(self, *, relative_path: str) -> None:
         logger.info("would retract %s", relative_path)
 
     async def aclose(self) -> None:
@@ -66,32 +67,25 @@ class _LoggingBoundary:
 
 
 class _KnowledgeFlowBoundary:
-    """Writes into, and takes back out of, the library Fred gave this run."""
+    """Writes into, and takes back out of, the library Fred gave this run.
+
+    Both operations are addressed by the file's path within the folder, which is
+    this implementation's source key. Nothing Fred assigns is ever held here.
+    """
 
     def __init__(self, publisher: DocumentPublisher) -> None:
         self._publisher = publisher
 
-    async def publish(self, *, relative_path: str, path: Path) -> str | None:
+    async def publish(self, *, relative_path: str, path: Path, version: str) -> None:
         # read_bytes blocks; the walk is already off the event loop, so keep the
         # read here rather than holding every file's content through the scan.
-        document_uid = await self._publisher.publish(
-            relative_path=relative_path, content=path.read_bytes()
+        await self._publisher.publish(
+            relative_path=relative_path, content=path.read_bytes(), version=version
         )
-        logger.info(
-            "published %s%s",
-            relative_path,
-            f" as {document_uid}" if document_uid else "",
-        )
-        return document_uid
+        logger.info("published %s", relative_path)
 
-    async def retract(self, *, relative_path: str, document_uid: str | None) -> None:
-        if document_uid is None:
-            # Published before the ledger recorded identifiers: Fred still holds
-            # it, and nothing here can say which document it is.
-            raise UnknownDocument(
-                f"{relative_path} was published without a recorded identifier"
-            )
-        await self._publisher.retract(document_uid=document_uid)
+    async def retract(self, *, relative_path: str) -> None:
+        await self._publisher.retract(relative_path=relative_path)
         logger.info("retracted %s", relative_path)
 
     async def aclose(self) -> None:

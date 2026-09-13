@@ -16,9 +16,8 @@ The synchronization state this implementation owns, and Fred never sees.
 
 The contract reports counters, not state: deciding what "already synchronized"
 means is the implementation's business. Here that is a JSON sidecar per
-instance, mapping each relative path to what was published for it — the content
-hash that detects a change, and the identifier Fred gave the document, which is
-the only handle a later run has to take it back out of the library.
+instance, mapping relative path to content hash. Nothing Fred assigns is kept:
+a document is addressed by its path on both sides.
 """
 
 from __future__ import annotations
@@ -28,24 +27,9 @@ import json
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
 from pathlib import Path
 
-
-@dataclass(frozen=True)
-class LedgerEntry:
-    """What a previous run published for one path.
-
-    `document_uid` is what Fred called it, and the only handle a later run has
-    to take it back out of the library. A ledger written before documents were
-    really published carries none, so it is optional.
-    """
-
-    content_hash: str
-    document_uid: str | None = None
-
-
-type Ledger = dict[str, LedgerEntry]
+type Ledger = dict[str, str]
 
 # The state directory is the sample's own choice; the run context carries no
 # workspace, so an override is the only way tests and demos can redirect it.
@@ -96,19 +80,16 @@ def load_ledger(path: Path) -> Ledger:
     ledger: Ledger = {}
     for key, value in payload.items():
         if not isinstance(key, str):
-            raise LedgerError(f"ledger {path} is not a mapping of path to entry")
-        # A bare hash is how ledgers were written before documents reached Fred;
-        # reading it keeps an existing folder from republishing wholesale.
-        if isinstance(value, str):
-            ledger[key] = LedgerEntry(content_hash=value)
-        elif isinstance(value, dict) and isinstance(value.get("content_hash"), str):
-            uid = value.get("document_uid")
-            ledger[key] = LedgerEntry(
-                content_hash=value["content_hash"],
-                document_uid=uid if isinstance(uid, str) else None,
-            )
+            raise LedgerError(f"ledger {path} is not a mapping of path to hash")
+        # A ledger briefly carried Fred's identifier beside the hash, back when
+        # a retraction needed one. Reading that shape keeps a folder already
+        # synchronized from republishing wholesale.
+        if isinstance(value, dict) and isinstance(value.get("content_hash"), str):
+            ledger[key] = value["content_hash"]
+        elif isinstance(value, str):
+            ledger[key] = value
         else:
-            raise LedgerError(f"ledger {path} is not a mapping of path to entry")
+            raise LedgerError(f"ledger {path} is not a mapping of path to hash")
     return ledger
 
 
@@ -125,12 +106,7 @@ def save_ledger(path: Path, ledger: Ledger) -> None:
     temporary = Path(name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(
-                {key: asdict(entry) for key, entry in ledger.items()},
-                stream,
-                indent=2,
-                sort_keys=True,
-            )
+            json.dump(ledger, stream, indent=2, sort_keys=True)
         os.replace(temporary, path)
     except OSError:
         temporary.unlink(missing_ok=True)
