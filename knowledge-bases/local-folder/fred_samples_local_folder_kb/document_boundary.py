@@ -11,30 +11,105 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-The seam where a real Knowledge Base hands documents to Fred.
 
-Both functions only log, on purpose: documents will go through Knowledge Flow's
-REST API, which a run cannot reach yet, and this is the one place that changes
-when it can. A Knowledge Base never writes to OpenSearch, S3 or any store
-directly — that is outside the contract.
 """
+The seam where this Knowledge Base hands documents to Fred.
+
+Documents go through Knowledge Flow's REST API, using the SDK's publisher so
+this sample writes no authentication code and holds no store credential. A
+Knowledge Base never writes to OpenSearch or S3 directly.
+
+Without a Knowledge Flow URL in the environment the boundary only logs, which
+is what lets `make sync` run against a folder with no Fred at all.
+"""
+
+from __future__ import annotations
 
 import logging
+from pathlib import Path
+from typing import Protocol
+
+from fred_sdk.knowledge_base import DocumentPublisher, MissingPodEnvironment
+from fred_sdk.knowledge_base.environment import PodEnvironment
 
 logger = logging.getLogger(__name__)
 
 
-def publish_document(*, relative_path: str, content_hash: str, size_bytes: int) -> None:
-    """Hand one created or updated document to Fred. Logs instead, for now."""
-    logger.info(
-        "would publish %s (%d bytes, sha256:%s)",
-        relative_path,
-        size_bytes,
-        content_hash[:12],
+class UnknownDocument(RuntimeError):
+    """A ledger entry names no document, so it cannot be taken back."""
+
+
+class Boundary(Protocol):
+    """What the handler needs from Fred, so a run can be tried without one."""
+
+    async def publish(self, *, relative_path: str, path: Path) -> str | None: ...
+
+    async def retract(
+        self, *, relative_path: str, document_uid: str | None
+    ) -> None: ...
+
+    async def aclose(self) -> None: ...
+
+
+class _LoggingBoundary:
+    """Says what it would do. The offline developer tool's boundary."""
+
+    async def publish(self, *, relative_path: str, path: Path) -> str | None:
+        logger.info("would publish %s (%d bytes)", relative_path, path.stat().st_size)
+        return None
+
+    async def retract(self, *, relative_path: str, document_uid: str | None) -> None:
+        logger.info("would retract %s", relative_path)
+
+    async def aclose(self) -> None:
+        return None
+
+
+class _KnowledgeFlowBoundary:
+    """Writes into, and takes back out of, the library Fred gave this run."""
+
+    def __init__(self, publisher: DocumentPublisher) -> None:
+        self._publisher = publisher
+
+    async def publish(self, *, relative_path: str, path: Path) -> str | None:
+        # read_bytes blocks; the walk is already off the event loop, so keep the
+        # read here rather than holding every file's content through the scan.
+        document_uid = await self._publisher.publish(
+            relative_path=relative_path, content=path.read_bytes()
+        )
+        logger.info(
+            "published %s%s",
+            relative_path,
+            f" as {document_uid}" if document_uid else "",
+        )
+        return document_uid
+
+    async def retract(self, *, relative_path: str, document_uid: str | None) -> None:
+        if document_uid is None:
+            # Published before the ledger recorded identifiers: Fred still holds
+            # it, and nothing here can say which document it is.
+            raise UnknownDocument(
+                f"{relative_path} was published without a recorded identifier"
+            )
+        await self._publisher.retract(document_uid=document_uid)
+        logger.info("retracted %s", relative_path)
+
+    async def aclose(self) -> None:
+        await self._publisher.aclose()
+
+
+def open_boundary(*, library_id: str, source_tag: str) -> Boundary:
+    """Whichever boundary this environment can support."""
+    try:
+        environment = PodEnvironment.from_env(require_temporal=False)
+    except MissingPodEnvironment as error:
+        logger.info("No Fred environment (%s): logging documents instead", error)
+        return _LoggingBoundary()
+
+    if not environment.knowledge_flow_url:
+        logger.info("No Knowledge Flow URL set: logging documents instead")
+        return _LoggingBoundary()
+
+    return _KnowledgeFlowBoundary(
+        DocumentPublisher(environment, library_id=library_id, source_tag=source_tag)
     )
-
-
-def retract_document(*, relative_path: str) -> None:
-    """Tell Fred one document is gone from the source. Logs instead, for now."""
-    logger.info("would retract %s", relative_path)

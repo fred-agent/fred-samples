@@ -26,6 +26,8 @@ import argparse
 import asyncio
 import json
 import logging
+import os
+import time
 import uuid
 from collections.abc import Sequence
 
@@ -42,6 +44,11 @@ from fred_samples_local_folder_kb.knowledge_base import kb
 # run is recognisable in a log next to a real one.
 LOCAL_TEAM_ID = "local-team"
 DEFAULT_INSTANCE_ID = "local"
+# Fred creates the library with the instance and puts its id in the run context.
+# Until that exists, the developer names it — the handler cannot tell the
+# difference, which is what keeps this tool from being throwaway.
+LIBRARY_ID_ENV = "FRED_KB_LIBRARY_ID"
+DEFAULT_INTERVAL_SECONDS = 60
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -52,40 +59,85 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("declaration", help="print what `publish` would send to Fred")
 
-    run = commands.add_parser("sync", help="synchronize a folder once, locally")
-    run.add_argument("--root-path", required=True, help="folder to synchronize")
-    run.add_argument("--glob", help="which files to pick up (default: **/*.md)")
-    run.add_argument("--max-files", type=int, help="stop after this many files")
-    run.add_argument(
-        "--instance-id",
-        default=DEFAULT_INSTANCE_ID,
-        help="which instance's ledger to use (default: local)",
-    )
+    for name, help_text in (
+        ("sync", "synchronize a folder once, locally"),
+        ("watch", "synchronize a folder over and over, until stopped"),
+    ):
+        run = commands.add_parser(name, help=help_text)
+        run.add_argument("--root-path", required=True, help="folder to synchronize")
+        run.add_argument("--glob", help="which files to pick up (default: **/*.md)")
+        run.add_argument("--max-files", type=int, help="stop after this many files")
+        run.add_argument(
+            "--instance-id",
+            default=DEFAULT_INSTANCE_ID,
+            help="which instance's ledger to use (default: local)",
+        )
+        run.add_argument(
+            "--library-id",
+            default=os.getenv(LIBRARY_ID_ENV, ""),
+            help=f"library to write into (default: ${LIBRARY_ID_ENV})",
+        )
+        if name == "watch":
+            run.add_argument(
+                "--interval",
+                type=int,
+                default=DEFAULT_INTERVAL_SECONDS,
+                help=f"seconds between passes (default: {DEFAULT_INTERVAL_SECONDS})",
+            )
 
     arguments = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
     if arguments.command == "declaration":
         print(json.dumps(KnowledgeBaseDeclaration.of(kb).to_payload(), indent=2))
         return 0
+    if arguments.command == "watch":
+        return _watch(arguments)
     return _run_sync(arguments)
 
 
-def _run_sync(arguments: argparse.Namespace) -> int:
+def _context(arguments: argparse.Namespace) -> KnowledgeBaseRunContext:
+    """Fred builds this per run; here it is built by hand, and that is the only
+    difference the handler could ever notice."""
     configuration: dict[str, TuningValue] = {"root_path": arguments.root_path}
     if arguments.glob:
         configuration["glob"] = arguments.glob
     if arguments.max_files is not None:
         configuration["max_files"] = arguments.max_files
-
-    # Fred fetches this context per run and hands it to the same handler; here
-    # it is built by hand, which is the only difference.
-    context = KnowledgeBaseRunContext(
+    return KnowledgeBaseRunContext(
         definition_id=kb.id,
         instance_id=arguments.instance_id,
         team_id=LOCAL_TEAM_ID,
         run_id=uuid.uuid4().hex,
+        library_id=arguments.library_id or "local-library",
         configuration=configuration,
     )
-    result = asyncio.run(kb.resolve_handler()(context))
+
+
+def _run_sync(arguments: argparse.Namespace) -> int:
+    result = asyncio.run(kb.resolve_handler()(_context(arguments)))
     print(json.dumps(result.model_dump(mode="json"), indent=2))
     return 0 if result.outcome is KnowledgeBaseRunOutcome.succeeded else 1
+
+
+def _watch(arguments: argparse.Namespace) -> int:
+    """What Fred's schedule will do, until Fred's schedule exists.
+
+    The handler is called exactly as a dispatched run calls it, so replacing
+    this loop with a real cadence changes nothing on the other side of it.
+    """
+    logger = logging.getLogger("watch")
+    logger.info(
+        "watching %s every %ss — Ctrl-C to stop",
+        arguments.root_path,
+        arguments.interval,
+    )
+    while True:
+        result = asyncio.run(kb.resolve_handler()(_context(arguments)))
+        logger.info("%s — %s", result.outcome.value, result.summary)
+        for issue in result.errors + result.warnings:
+            logger.warning("  %s %s", issue.code, issue.subject or "")
+        try:
+            time.sleep(arguments.interval)
+        except KeyboardInterrupt:
+            logger.info("stopped")
+            return 0

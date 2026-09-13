@@ -38,12 +38,10 @@ from fred_sdk.knowledge_base import (
     KnowledgeBaseSyncResult,
 )
 
-from fred_samples_local_folder_kb.document_boundary import (
-    publish_document,
-    retract_document,
-)
+from fred_samples_local_folder_kb.document_boundary import open_boundary
 from fred_samples_local_folder_kb.ledger import (
     Ledger,
+    LedgerEntry,
     LedgerError,
     ledger_path_for,
     load_ledger,
@@ -56,7 +54,7 @@ DEFAULT_GLOB = "**/*.md"
 _HASH_CHUNK_BYTES = 1 << 20
 
 kb = KnowledgeBase(
-    id="local-folder",
+    id="fred.samples.local-folder",
     version="1.0.0",
     name="Local folder",
     description=(
@@ -99,25 +97,15 @@ kb = KnowledgeBase(
 @kb.synchronize
 async def synchronize(context: KnowledgeBaseRunContext) -> KnowledgeBaseSyncResult:
     """Reconcile the configured folder with what the previous run published."""
-    # Reading the configuration probes the filesystem, and the walk hashes every
-    # file — all blocking, and this handler runs on the event loop.
-    return await asyncio.to_thread(
-        _run, context.configuration, ledger_path_for(context.instance_id)
-    )
-
-
-def _run(
-    configuration: Mapping[str, TuningValue], ledger_path: Path
-) -> KnowledgeBaseSyncResult:
-    """Turn a configuration this implementation cannot work with into a result.
-
-    A handler owes Fred a result, not an exception, so nothing about a bad
-    configuration is allowed to escape — including a pattern that only turns
-    out to be malformed once the walk starts.
-    """
     try:
-        settings = _read_settings(configuration)
-        return _synchronize(settings, ledger_path)
+        # Reading the configuration probes the filesystem, and the walk hashes
+        # every file — blocking work kept off the event loop. A handler owes
+        # Fred a result, not an exception, including for a glob that only turns
+        # out to be malformed once the walk starts.
+        settings = await asyncio.to_thread(_read_settings, context.configuration)
+        return await _synchronize(
+            settings, ledger_path_for(context.instance_id), context
+        )
     except _ConfigurationError as error:
         return _failed(error.code, str(error))
 
@@ -194,7 +182,9 @@ def _read_max_files(raw: TuningValue | None) -> int | None:
 # ── Synchronization ────────────────────────────────────────────────────────────
 
 
-def _synchronize(settings: _Settings, ledger_path: Path) -> KnowledgeBaseSyncResult:
+async def _synchronize(
+    settings: _Settings, ledger_path: Path, context: KnowledgeBaseRunContext
+) -> KnowledgeBaseSyncResult:
     warnings: list[KnowledgeBaseIssue] = []
     try:
         previous = load_ledger(ledger_path)
@@ -204,7 +194,7 @@ def _synchronize(settings: _Settings, ledger_path: Path) -> KnowledgeBaseSyncRes
         _add_issue(warnings, "ledger_unreadable", str(error))
         previous = {}
 
-    paths, truncated = _discover(settings, warnings)
+    paths, truncated = await asyncio.to_thread(_discover, settings, warnings)
     if truncated:
         _add_issue(
             warnings,
@@ -213,45 +203,58 @@ def _synchronize(settings: _Settings, ledger_path: Path) -> KnowledgeBaseSyncRes
             "stays unsynchronized until the bound is raised",
         )
 
-    current: Ledger = {}
+    scanned, seen, carried = await asyncio.to_thread(
+        _scan, settings, paths, previous, warnings
+    )
+
+    current: Ledger = dict(carried)
     created = updated = unchanged = 0
     published_bytes = 0
 
-    for path in paths:
-        relative = path.relative_to(settings.root).as_posix()
-        try:
-            content_hash, size_bytes = _hash_file(path)
-        except OSError as error:
-            _add_issue(warnings, "read_failed", str(error), subject=relative)
-            known = previous.get(relative)
-            if known is not None:
-                current[relative] = known  # unread, but still there: not removed
-            continue
-
-        current[relative] = content_hash
-        known = previous.get(relative)
-        if known == content_hash:
-            unchanged += 1
-            continue
-        if known is None:
-            created += 1
-        else:
-            updated += 1
-        published_bytes += size_bytes
-        publish_document(
-            relative_path=relative, content_hash=content_hash, size_bytes=size_bytes
-        )
-
     removed = 0
-    if truncated:
-        # A bounded run has not seen every file, so absence proves nothing:
-        # carry the untouched entries forward instead of retracting them.
-        for relative, content_hash in previous.items():
-            current.setdefault(relative, content_hash)
-    else:
-        for relative in sorted(set(previous) - set(current)):
-            removed += 1
-            retract_document(relative_path=relative)
+    boundary = open_boundary(library_id=context.library_id, source_tag=kb.id)
+    try:
+        for relative, path, content_hash, size_bytes in scanned:
+            known = previous.get(relative)
+            if known is not None and known.content_hash == content_hash:
+                unchanged += 1
+                current[relative] = known
+                continue
+            try:
+                document_uid = await boundary.publish(relative_path=relative, path=path)
+            except Exception as error:  # noqa: BLE001 - any failure is one file's
+                # Deliberately absent from the ledger, so the next run retries
+                # it; recording it would strand the document unpublished.
+                _add_issue(warnings, "publish_failed", str(error), subject=relative)
+                continue
+            current[relative] = LedgerEntry(content_hash, document_uid)
+            published_bytes += size_bytes
+            if known is None:
+                created += 1
+            else:
+                updated += 1
+
+        if truncated:
+            # A bounded run has not seen every file, so absence proves nothing:
+            # carry the untouched entries forward instead of retracting them.
+            for relative, entry in previous.items():
+                current.setdefault(relative, entry)
+        else:
+            for relative in sorted(set(previous) - seen):
+                entry = previous[relative]
+                try:
+                    await boundary.retract(
+                        relative_path=relative, document_uid=entry.document_uid
+                    )
+                except Exception as error:  # noqa: BLE001 - one document's failure
+                    # Kept in the ledger: it is still in the library, and a run
+                    # that forgot it would never try to take it out again.
+                    current[relative] = entry
+                    _add_issue(warnings, "retract_failed", str(error), subject=relative)
+                    continue
+                removed += 1
+    finally:
+        await boundary.aclose()
 
     save_error: str | None = None
     try:
@@ -292,6 +295,36 @@ def _synchronize(settings: _Settings, ledger_path: Path) -> KnowledgeBaseSyncRes
             "published_bytes": published_bytes,
         },
     )
+
+
+def _scan(
+    settings: _Settings,
+    paths: list[Path],
+    previous: Ledger,
+    warnings: list[KnowledgeBaseIssue],
+) -> tuple[list[tuple[str, Path, str, int]], set[str], Ledger]:
+    """Hash every discovered file, off the event loop.
+
+    Returns what to consider publishing, every path that still exists — which is
+    what deletion is judged against — and the entries of files that exist but
+    could not be read, which must survive in the ledger untouched.
+    """
+    scanned: list[tuple[str, Path, str, int]] = []
+    seen: set[str] = set()
+    carried: Ledger = {}
+    for path in paths:
+        relative = path.relative_to(settings.root).as_posix()
+        seen.add(relative)
+        try:
+            content_hash, size_bytes = _hash_file(path)
+        except OSError as error:
+            _add_issue(warnings, "read_failed", str(error), subject=relative)
+            known = previous.get(relative)
+            if known is not None:
+                carried[relative] = known  # unread, but still there: not removed
+            continue
+        scanned.append((relative, path, content_hash, size_bytes))
+    return scanned, seen, carried
 
 
 def _discover(

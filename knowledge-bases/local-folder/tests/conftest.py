@@ -40,6 +40,7 @@ def sync(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SyncRunner:
             instance_id="instance-under-test",
             team_id="team-under-test",
             run_id="run-under-test",
+            library_id="library-under-test",
             configuration={"root_path": str(root), **configuration},
         )
         return asyncio.run(kb.resolve_handler()(context))

@@ -90,6 +90,16 @@ sync: dev ## Synchronize a folder once: make sync ROOT=/path/to/notes
 	fi
 	VIRTUAL_ENV= $(UV_RUN) run $(CLI) sync --root-path $(ROOT)
 
+.PHONY: watch
+watch: dev ## Synchronize a folder over and over: make watch ROOT=/path/to/notes
+	@if [ -z "$(ROOT)" ]; then \
+		echo "Provide a folder: make watch ROOT=/path/to/notes"; \
+		exit 1; \
+	fi
+	@test -f $(ENV_FILE) || { echo "Missing $(ENV_FILE) — copy config/env.template"; exit 1; }
+	set -a; . $(ENV_FILE); set +a; VIRTUAL_ENV= $(UV_RUN) run $(CLI) watch \
+		--root-path $(ROOT) $(if $(INTERVAL),--interval $(INTERVAL),)
+
 # ── Code quality ───────────────────────────────────────────────────────────────
 # Same tool set and baselines as ../../agents: ruff (lint + format), bandit
 # (SAST), detect-secrets (leak scan), basedpyright (type-check).
