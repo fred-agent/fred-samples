@@ -149,14 +149,26 @@ sync: dev ## Synchronize a share once: make sync URL=https://host/folder/ [LIBRA
 		echo "Provide a share: make sync URL=https://host/folder/"; \
 		exit 1; \
 	fi
-	VIRTUAL_ENV= $(UV_RUN) run $(CLI) sync --url '$(URL)' \
-		$(if $(USER),--username '$(USER)',) \
-		$(if $(INCLUDE),--include '$(INCLUDE)',) \
-		$(if $(EXCLUDE),--exclude '$(EXCLUDE)',) \
-		$(if $(MAX_FILES),--max-files $(MAX_FILES),) \
-		$(if $(INSTANCE),--instance '$(INSTANCE)',) \
-		$(if $(TRUST_ANY_CERTIFICATE),--trust-any-certificate,) \
-		$(if $(LIBRARY),--library '$(LIBRARY)',)
+	ENV_FILE=$(ENV_FILE) VIRTUAL_ENV= $(UV_RUN) run $(CLI) sync $(SYNC_FLAGS)
+
+.PHONY: watch
+watch: dev ## Synchronize over and over: make watch URL=... LIBRARY=... [INTERVAL=30]
+	@if [ -z "$(URL)" ]; then \
+		echo "Provide a share: make watch URL=http://localhost:8088/dav/"; \
+		exit 1; \
+	fi
+	ENV_FILE=$(ENV_FILE) VIRTUAL_ENV= $(UV_RUN) run $(CLI) watch $(SYNC_FLAGS) \
+		$(if $(INTERVAL),--interval $(INTERVAL),)
+
+# Shared by sync and watch: one list, so the two can never drift apart.
+SYNC_FLAGS = --url '$(URL)' \
+	$(if $(USER),--username '$(USER)',) \
+	$(if $(INCLUDE),--include '$(INCLUDE)',) \
+	$(if $(EXCLUDE),--exclude '$(EXCLUDE)',) \
+	$(if $(MAX_FILES),--max-files $(MAX_FILES),) \
+	$(if $(INSTANCE),--instance '$(INSTANCE)',) \
+	$(if $(TRUST_ANY_CERTIFICATE),--trust-any-certificate,) \
+	$(if $(LIBRARY),--library '$(LIBRARY)',)
 
 # ── Code quality ───────────────────────────────────────────────────────────────
 # Same tool set and baselines as the sibling packages: ruff (lint + format),

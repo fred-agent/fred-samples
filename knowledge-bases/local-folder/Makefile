@@ -98,7 +98,7 @@ watch: dev ## Synchronize a folder over and over: make watch ROOT=/path/to/notes
 		exit 1; \
 	fi
 	@test -f $(ENV_FILE) || { echo "Missing $(ENV_FILE) — copy config/env.template"; exit 1; }
-	set -a; . $(ENV_FILE); set +a; VIRTUAL_ENV= $(UV_RUN) run $(CLI) watch \
+	ENV_FILE=$(ENV_FILE) VIRTUAL_ENV= $(UV_RUN) run $(CLI) watch \
 		--root-path $(ROOT) $(if $(INTERVAL),--interval $(INTERVAL),)
 
 # ── Code quality ───────────────────────────────────────────────────────────────

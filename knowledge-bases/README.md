@@ -152,6 +152,18 @@ make sync URL=http://localhost:8088/dav/
 make share-stop
 ```
 
+To watch documents appear as you edit them, loop instead of running once:
+
+```bash
+make watch URL=http://localhost:8088/dav/ LIBRARY=<id> INTERVAL=30
+```
+
+Edit a file under the folder it serves and the next pass reports it `updated`;
+add one and it is `created`; delete one and it is `removed`. This is what a
+Fred schedule will do once one dispatches — Fred's own cadences are hourly,
+daily and weekly, so thirty seconds is a developer's loop and never an
+instance's setting.
+
 **Run it twice.** The first run proves the source can be read; the second proves
 the implementation knows what it already published — which is where a
 synchronizer is usually wrong.

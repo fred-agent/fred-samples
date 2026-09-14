@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import ssl
+import time
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -53,6 +54,11 @@ from fred_samples_webdav_kb.webdav import (
 # which the leak scanner cannot tell from the thing it names.
 PASSWORD_ENV = "FRED_SAMPLES_WEBDAV_PASSWORD"  # nosec B105  # pragma: allowlist secret
 
+# What a real cadence will do once Fred dispatches one. Shorter than any
+# cadence Fred offers on purpose: this exists to watch a change land, not to
+# stand in for a schedule.
+DEFAULT_INTERVAL_SECONDS = 60
+
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -66,30 +72,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("declaration", help="print what `publish` would send to Fred")
 
-    sync = commands.add_parser("sync", help="synchronize a share once, locally")
-    sync.add_argument("--url", required=True, help="the folder, as in a browser")
-    sync.add_argument("--username", default="", help="for a share needing a sign-in")
-    sync.add_argument("--include", default="", help="default: **/*.md")
-    sync.add_argument("--exclude", default="")
-    sync.add_argument("--max-files", type=int, default=None)
-    sync.add_argument(
-        "--instance",
-        default="dev",
-        help="which ledger to use, so two shares can be tried side by side",
-    )
-    sync.add_argument(
-        "--trust-any-certificate",
-        action="store_true",
-        help=f"accept any certificate; prefer ${CA_FILE_ENV}",
-    )
-    sync.add_argument(
-        "--library",
-        default="",
-        help=(
-            "write into this Fred library for real, instead of logging what "
-            "would be written. Needs the pod environment (config/.env)."
-        ),
-    )
+    for name, help_text in (
+        ("sync", "synchronize a share once, locally"),
+        ("watch", "synchronize a share over and over, until stopped"),
+    ):
+        run = commands.add_parser(name, help=help_text)
+        run.add_argument("--url", required=True, help="the folder, as in a browser")
+        run.add_argument("--username", default="", help="for a share needing a sign-in")
+        run.add_argument("--include", default="", help="default: **/*.md")
+        run.add_argument("--exclude", default="")
+        run.add_argument("--max-files", type=int, default=None)
+        run.add_argument(
+            "--instance",
+            default="dev",
+            help="which ledger to use, so two shares can be tried side by side",
+        )
+        run.add_argument(
+            "--trust-any-certificate",
+            action="store_true",
+            help=f"accept any certificate; prefer ${CA_FILE_ENV}",
+        )
+        run.add_argument(
+            "--library",
+            default="",
+            help=(
+                "write into this Fred library for real, instead of logging what "
+                "would be written. Needs the pod configuration (config/.env)."
+            ),
+        )
+        if name == "watch":
+            run.add_argument(
+                "--interval",
+                type=int,
+                default=DEFAULT_INTERVAL_SECONDS,
+                help=f"seconds between passes (default: {DEFAULT_INTERVAL_SECONDS})",
+            )
     arguments = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
 
@@ -129,9 +146,42 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     ledger_path = ledger_path_for(arguments.instance)
     print(f"ledger: {ledger_path}  (${STATE_DIR_ENV} moves it)")
+
+    if arguments.command == "watch":
+        return _watch(arguments, settings, verify, ledger_path)
+
     report = asyncio.run(_run(settings, verify, ledger_path, arguments.library))
     print(json.dumps(as_json(report), indent=2))
     return 0 if report.succeeded else 1
+
+
+def _watch(
+    arguments: argparse.Namespace,
+    settings: Settings,
+    verify: ssl.SSLContext | bool,
+    ledger_path: Path,
+) -> int:
+    """What Fred's schedule will do, until Fred's schedule exists.
+
+    The handler is called exactly as a dispatched run calls it, so replacing
+    this loop with a real cadence changes nothing on the other side of it.
+    """
+    watcher = logging.getLogger("watch")
+    watcher.info(
+        "watching %s every %ss — Ctrl-C to stop",
+        settings.where.url,
+        arguments.interval,
+    )
+    while True:
+        report = asyncio.run(_run(settings, verify, ledger_path, arguments.library))
+        watcher.info("%s", report.summary())
+        for issue in report.errors:
+            watcher.warning("  %s %s", issue.code, issue.subject or "")
+        try:
+            time.sleep(arguments.interval)
+        except KeyboardInterrupt:
+            watcher.info("stopped")
+            return 0
 
 
 def as_json(report: RunReport) -> dict[str, object]:
