@@ -17,9 +17,10 @@ fred-samples/
 ├── apps/
 │   ├── document-triage/            Sample application — no secrets, agents read only
 │   └── progress-tracker/           Sample application — UI + API + agent capability
-├── knowledge-bases/
-│   ├── local-folder/               Sample Knowledge Base — synchronize Markdown from a folder
-│   └── webdav/                     Sample Knowledge Base — synchronize a WebDAV share
+├── knowledge-bases/                Sample Knowledge Bases — see its README.md
+│   ├── local-folder/               synchronize Markdown from a folder
+│   ├── git-repository/             synchronize a GitHub or GitLab branch
+│   └── webdav/                     synchronize a WebDAV share
 └── servers/
     └── mcp/
         └── python/
@@ -226,6 +227,9 @@ A **Knowledge Base** tells Fred where a team's documents come from and how to
 keep them up to date. You declare one with `fred_sdk.knowledge_base`: an
 identity, the configuration an operator fills in, and one async handler that
 reconciles the source and reports what changed.
+
+**Start here:** [knowledge-bases/README.md](knowledge-bases/README.md) — the
+three samples, how to run one by hand, and how to drive one with the skills.
 
 ### Local Folder — sample Knowledge Base
 
