@@ -61,8 +61,31 @@ PUT $FRED_CONTROL_PLANE_URL/knowledge-bases/definitions/<definition id>
 Idempotent, so every deployment of the image replays it and what Fred stores
 stays what is deployed.
 
-`make run` connects to `$FRED_TEMPORAL_HOST` and waits for runs on a queue
-derived from the definition id. It opens no port of its own.
+`make run` connects to `$FRED_TEMPORAL_HOST` and polls one Temporal task queue.
+It opens no port of its own.
+
+**Nothing names that queue — it is derived.** Both the pod and the Control Plane
+compute it from the definition id with the same `fred_core` function, so the
+dispatching side and the worker side cannot disagree by construction:
+
+```
+kb__ + fred.samples.webdav  →  kb__fred.samples.webdav
+```
+
+`kb__` is the catalog namespace Knowledge Bases reserve, so they never collide
+with capabilities, agents or applications. The rest is the definition id, which
+already carries the prefix its contributor owns — which is why two contributors
+can never end up sharing a queue. Configuring a queue name would be the bug: a
+pod and a Control Plane that disagreed about it would lose every run silently.
+
+The first line `make run` prints tells you which queue it took:
+
+```
+INFO    Knowledge Base fred.samples.webdav serving runs on kb__fred.samples.webdav
+```
+
+A queue that does not match the definition id is a contract break, not a
+setting to adjust.
 
 Both authenticate the same way — Fred's own M2M mechanism
 (`fred_core.security.backend_to_backend_auth`, the module the other backends
