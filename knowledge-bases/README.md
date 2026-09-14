@@ -45,6 +45,74 @@ Without it, `make run` stops immediately and tells you exactly that.
 
 ---
 
+## What `publish` and `run` actually do
+
+Neither reads a YAML file. `fred_sdk.knowledge_base` reads the process
+environment and nothing else — the Makefile sources `config/.env` and hands it
+over. That is the whole configuration mechanism.
+
+`make publish` sends the declaration to the Control Plane:
+
+```
+PUT $FRED_CONTROL_PLANE_URL/knowledge-bases/definitions/<definition id>
+     { "prefix": $FRED_KB_PREFIX, ...the declared fields }
+```
+
+Idempotent, so every deployment of the image replays it and what Fred stores
+stays what is deployed.
+
+`make run` connects to `$FRED_TEMPORAL_HOST` and waits for runs on a queue
+derived from the definition id. It opens no port of its own.
+
+Both authenticate the same way — Fred's own M2M mechanism
+(`fred_core.security.backend_to_backend_auth`, the module the other backends
+use, not a scheme of its own):
+
+```
+POST $FRED_KEYCLOAK_REALM_URL/protocol/openid-connect/token
+     grant_type=client_credentials
+     client_id=$FRED_KB_CLIENT_ID          → kb-fred.samples
+     client_secret=$FRED_KB_CLIENT_SECRET  → read from the environment
+```
+
+then `Authorization: Bearer <token>` on every call. No token is ever written to
+disk, and the SDK opens no file to find the secret.
+
+### Why there is no `configuration_prod.yaml`
+
+The agent pod has one because it has a lot to configure: an HTTP server and its
+port, model and MCP catalogues, stores, security. Its `.env` carries two keys
+and the YAML carries the rest.
+
+A Knowledge Base pod has none of that — no inbound port, no store, no
+catalogue, no model. Its entire configuration is these, all in `config/.env`:
+
+| Variable | Needed by |
+|---|---|
+| `FRED_CONTROL_PLANE_URL` | both — **include the `/control-plane/v1` prefix** |
+| `FRED_KB_PREFIX` | both — the dotted prefix this image owns |
+| `FRED_KB_CLIENT_ID` | both |
+| `FRED_KB_CLIENT_SECRET` | both |
+| `FRED_KEYCLOAK_REALM_URL` | both |
+| `FRED_TEMPORAL_HOST` | `run` only |
+| `FRED_KNOWLEDGE_FLOW_URL` | optional — unset, a run logs instead of ingesting |
+| `FRED_TEMPORAL_NAMESPACE` | optional — defaults to `default` |
+
+That is the SDK's design, identical for every Knowledge Base, not a shortcut
+taken by these samples.
+
+Two failure modes worth recognising rather than debugging:
+`FRED_CONTROL_PLANE_URL` without its `/control-plane/v1` prefix makes every call
+404 against a healthy Control Plane; a missing `FRED_KB_CLIENT_SECRET` makes the
+SDK log that it is calling Fred unauthenticated and carry on, after which every
+call is rejected.
+
+**For the local stack, the template already holds the right values**, dev client
+secret included. `cp config/env.template config/.env` is enough — there is
+nothing to edit before `make publish`.
+
+---
+
 ## Trying one with no Fred at all
 
 Every sample ships a developer tool that runs the real handler against a real
