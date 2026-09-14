@@ -1,0 +1,31 @@
+# A WebDAV share for trying the WebDAV Knowledge Base against something real.
+#
+# Apache mod_dav + mod_dav_fs — the same pair a production share runs, rather
+# than a stand-in that would agree with whatever the Knowledge Base happens to
+# do. It is a test fixture, not a deployable: no authentication, no TLS.
+#
+# The folder it serves is mounted at /srv/share, so one image serves whichever
+# folder `make share-run SHARE_DIR=...` points at.
+#
+# Built and run from knowledge-bases/webdav:
+#     make share-build
+#     make share-run SHARE_DIR=/path/to/documents
+
+FROM httpd:2.4
+
+# Apache starts as root to bind its port and drops to this user for every
+# request it serves — the conf's User/Group directives. That is Apache's own
+# privilege model, not a shortcut around the repository's non-root rule.
+ARG USER_NAME=daemon
+
+COPY knowledge-bases/webdav/local-webdav/httpd.conf /usr/local/apache2/conf/httpd.conf
+
+# mod_dav insists on somewhere to keep locks even when nothing ever takes one,
+# and the directory has to exist before the first request rather than at the
+# first LOCK.
+RUN mkdir -p /var/lock/apache2 /srv/share \
+    && chown -R ${USER_NAME} /var/lock/apache2
+
+EXPOSE 80
+
+CMD ["httpd-foreground"]

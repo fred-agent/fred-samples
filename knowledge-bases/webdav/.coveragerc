@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = fred_samples_webdav_kb
+
+[report]
+omit =
+    tests/*

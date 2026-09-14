@@ -30,6 +30,7 @@ repos:
             "agents/fred_samples_agents",
             "knowledge-bases/local-folder/fred_samples_local_folder_kb",
             "knowledge-bases/git-repository/fred_samples_git_kb",
+            "knowledge-bases/webdav/fred_samples_webdav_kb",
           ]
         name: sast
   - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
@@ -47,3 +48,7 @@ repos:
         name: type-check (git-repository KB)
         files: ^knowledge-bases/git-repository/
         args: ["--project", "knowledge-bases/git-repository"]
+      - id: basedpyright
+        name: type-check (WebDAV KB)
+        files: ^knowledge-bases/webdav/
+        args: ["--project", "knowledge-bases/webdav"]

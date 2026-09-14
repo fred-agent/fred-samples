@@ -18,7 +18,8 @@ fred-samples/
 │   ├── document-triage/            Sample application — no secrets, agents read only
 │   └── progress-tracker/           Sample application — UI + API + agent capability
 ├── knowledge-bases/
-│   └── local-folder/               Sample Knowledge Base — synchronize Markdown from a folder
+│   ├── local-folder/               Sample Knowledge Base — synchronize Markdown from a folder
+│   └── webdav/                     Sample Knowledge Base — synchronize a WebDAV share
 └── servers/
     └── mcp/
         └── python/
@@ -252,6 +253,33 @@ make sync ROOT=/path/to/your/notes # one run, with no Fred and no Temporal
 Documents will go through Knowledge Flow's REST API, which a run cannot reach
 yet — until then the sample logs what it *would* publish, from one clearly
 marked file.
+
+### WebDAV share — sample Knowledge Base
+
+Synchronizes a folder published over WebDAV — an Apache `mod_dav` share is the
+case it is written and tested against. Every run re-lists the whole tree, so
+unlike a source that only reports its own changes, this one can tell that a
+file is really gone and retract its document.
+
+```
+Folder:   knowledge-bases/webdav/
+Requires: a reachable WebDAV share — no model, no MCP server, no cluster
+```
+
+**Sample docs:** [README.md](knowledge-bases/webdav/README.md)
+
+```bash
+cd knowledge-bases/webdav
+make share-run                            # a real Apache mod_dav share, in a container
+make sync URL=http://localhost:8088/dav/  # one run against it, with no Fred
+```
+
+The `webdav-share` skill in `.claude/skills/` drives that from a sentence —
+serve any folder, then synchronize it into a real library.
+
+Two things it is worth reading that README for: why the walk is `Depth: 1` and
+never `Depth: infinity`, and why a corporate `https://` share fails in Python
+while `curl` against the same URL succeeds.
 
 ---
 
