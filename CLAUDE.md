@@ -82,11 +82,52 @@ this repo — it enforces switching `agents/config/.env`'s `CONFIG_FILE` to
 Never leave this ambiguous: if `.env` doesn't already point at the profile the task actually needs,
 fix it and say so rather than proceeding on whatever it happened to be set to.
 
-A Knowledge Base pod has **no config profile at all** — `fred_sdk.knowledge_base` reads the
-process environment and nothing else, so the equivalent invariant is its `config/.env`, copied
-from the committed `config/env.template`. For a live session on one, use the
+For a live session on a Knowledge Base pod, use the
 `.claude/skills/live-knowledge-base-session` skill: same protocol, but two-sided (the pod publishes,
 the Control Plane receives) and with no inbound port to curl.
+
+---
+
+## Configuration style — no component invents its own (mandatory)
+
+**Every sample here is configured exactly the way a Fred backend is, with no stylistic
+difference whatsoever.** One `configuration.yaml` loaded through `CONFIG_FILE`, the same
+Pydantic models from `fred_core`, the same YAML keys, and environment variables carrying
+**secrets only**. A sample that configures itself differently teaches a third-party
+contributor the wrong thing, and a contributor who learns a second configuration model is
+the cost this rule exists to avoid.
+
+Concretely, before adding or touching any configuration:
+
+- **Reuse the model, never a parallel one.** `fred_core.security.structure` already has
+  `SecurityConfiguration`, `M2MSecurity`, `UserSecurity`, `RebacConfiguration`;
+  `fred_core.common.structures` has `TemporalSchedulerConfig`, `ModelConfiguration`, the
+  store and KPI sink configs. Keycloak is `security.m2m` with `realm_url`, `client_id`,
+  `secret_env_var` — never a hand-rolled trio of environment variables.
+- **Keep the keys identical.** `security.m2m.realm_url`, `scheduler.temporal.host`, and so
+  on. A renamed key is a difference of style, and none is accepted.
+- **Load it the shared way** — `fred_core.common.config_loader`, resolved from `CONFIG_FILE`
+  — so local development and a Kubernetes Deployment differ only in where the file is
+  mounted, never in mechanism.
+- **Environment carries secrets and nothing else.** A non-secret value in an environment
+  variable is a bug, because it cannot be reviewed in a ConfigMap with the rest.
+
+### The one known deviation, and what to do about it
+
+`fred_sdk.knowledge_base` does **not** follow this yet: it reads the process environment and
+nothing else, has no `CONFIG_FILE`, ships no `configuration.yaml`, and re-invents in
+`FRED_KEYCLOAK_REALM_URL` / `FRED_KB_CLIENT_ID` / `FRED_KB_CLIENT_SECRET` /
+`FRED_TEMPORAL_HOST` what `M2MSecurity` and `TemporalSchedulerConfig` already model. Every
+Knowledge Base sample inherits that, which is why they carry a `config/env.template` and no
+YAML.
+
+This is a deviation to close in `libs/fred-sdk`, tracked under issue **#2351** (*Converge
+FRED startup configuration into one strict, versioned contract*), whose scope already names
+independently deployed source connectors — which is exactly what a Knowledge Base pod is.
+
+Until it closes: do not paper over it, do not invent a YAML for one sample alone, and do not
+copy the environment-only pattern into anything new. Say plainly that it is a known
+deviation and point at #2351.
 
 ---
 
