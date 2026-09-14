@@ -286,3 +286,16 @@ def settings_for(
 @pytest.fixture
 def ledger_path(tmp_path):
     return tmp_path / "ledger.json"
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_fred_configuration(monkeypatch: pytest.MonkeyPatch):
+    """No test may pick up the configuration a developer happens to have.
+
+    A pod resolves `./config/configuration.yaml` by default, so a suite run
+    from this directory would otherwise reach the real Control Plane and
+    Knowledge Flow of whoever ran it — passing or failing on their machine's
+    state rather than on the code.
+    """
+    monkeypatch.setenv("CONFIG_FILE", "/nonexistent/configuration.yaml")
+    monkeypatch.setenv("ENV_FILE", "/nonexistent/.env")

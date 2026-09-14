@@ -33,9 +33,9 @@ import logging
 import mimetypes
 
 import httpx
-from fred_core.security.backend_to_backend_auth import M2MAuthConfig, M2MTokenProvider
-from fred_sdk.knowledge_base import MissingPodEnvironment
-from fred_sdk.knowledge_base.environment import CLIENT_SECRET_ENV, PodEnvironment
+from fred_core.security.backend_to_backend_auth import M2MTokenProvider
+from fred_sdk.knowledge_base import MissingPodConfiguration
+from fred_sdk.knowledge_base.configuration import PodConfiguration
 
 from fred_samples_git_kb.library import Library, LibraryError, LoggingLibrary
 
@@ -58,24 +58,13 @@ _MAX_DETAIL = 200
 class KnowledgeFlowLibrary:
     """One library, written through the surface meant for a synchronizing caller."""
 
-    def __init__(self, environment: PodEnvironment, *, library_id: str) -> None:
-        self._base_url = environment.knowledge_flow_url
+    def __init__(self, configuration: PodConfiguration, *, library_id: str) -> None:
+        self._base_url = configuration.knowledge_flow_url
         self._library_id = library_id
         self._client = httpx.AsyncClient(timeout=_WRITE_TIMEOUT)
-        self._tokens: M2MTokenProvider | None = None
-        if environment.authenticated:
-            self._tokens = M2MTokenProvider(
-                M2MAuthConfig(
-                    keycloak_realm_url=environment.keycloak_realm_url,
-                    client_id=environment.client_id,
-                    secret_env=CLIENT_SECRET_ENV,
-                )
-            )
-        else:
-            logger.warning(
-                "No client secret set: writing unauthenticated. Only a local "
-                "stack with authentication disabled will accept this."
-            )
+        # Built by the configuration, never here: it already knows the realm,
+        # the client and which environment variable holds the secret.
+        self._tokens = M2MTokenProvider(configuration.m2m)
 
     # ── the cursor ────────────────────────────────────────────────────────────
 
@@ -147,8 +136,6 @@ class KnowledgeFlowLibrary:
         return f"{self._base_url}/libraries/{self._library_id}"
 
     async def _headers(self) -> dict[str, str]:
-        if self._tokens is None:
-            return {}
         return {"Authorization": f"Bearer {await self._tokens.get_token()}"}
 
     @staticmethod
@@ -162,13 +149,13 @@ class KnowledgeFlowLibrary:
 def open_library(library_id: str) -> Library:
     """Whichever library this environment can support."""
     try:
-        environment = PodEnvironment.from_env(require_temporal=False)
-    except MissingPodEnvironment as error:
-        logger.info("No Fred environment (%s): logging documents instead", error)
+        configuration = PodConfiguration.load()
+    except MissingPodConfiguration as error:
+        logger.info("No Fred configuration (%s): logging documents instead", error)
         return LoggingLibrary()
 
-    if not environment.knowledge_flow_url:
+    if not configuration.knowledge_flow_url:
         logger.info("No Knowledge Flow URL set: logging documents instead")
         return LoggingLibrary()
 
-    return KnowledgeFlowLibrary(environment, library_id=library_id)
+    return KnowledgeFlowLibrary(configuration, library_id=library_id)

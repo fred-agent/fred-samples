@@ -112,22 +112,28 @@ Concretely, before adding or touching any configuration:
 - **Environment carries secrets and nothing else.** A non-secret value in an environment
   variable is a bug, because it cannot be reviewed in a ConfigMap with the rest.
 
-### The one known deviation, and what to do about it
+### What a Knowledge Base pod looks like, now that it follows this
 
-`fred_sdk.knowledge_base` does **not** follow this yet: it reads the process environment and
-nothing else, has no `CONFIG_FILE`, ships no `configuration.yaml`, and re-invents in
-`FRED_KEYCLOAK_REALM_URL` / `FRED_KB_CLIENT_ID` / `FRED_KB_CLIENT_SECRET` /
-`FRED_TEMPORAL_HOST` what `M2MSecurity` and `TemporalSchedulerConfig` already model. Every
-Knowledge Base sample inherits that, which is why they carry a `config/env.template` and no
-YAML.
+`fred_sdk.knowledge_base` used to read the process environment and nothing else. It no longer
+does: a pod loads `configuration.yaml` through `$CONFIG_FILE` like every other component,
+`security.m2m` is parsed by `M2MSecurity` and `scheduler.temporal` by `TemporalSchedulerConfig`
+— the same model the Control Plane parses for Knowledge Base cadence — and the environment
+carries the client secret alone.
 
-This is a deviation to close in `libs/fred-sdk`, tracked under issue **#2351** (*Converge
-FRED startup configuration into one strict, versioned contract*), whose scope already names
-independently deployed source connectors — which is exactly what a Knowledge Base pod is.
+Two consequences worth knowing before touching a sample:
 
-Until it closes: do not paper over it, do not invent a YAML for one sample alone, and do not
-copy the environment-only pattern into anything new. Say plainly that it is a known
-deviation and point at #2351.
+- **`security.user` is absent on purpose.** A Knowledge Base pod serves no user, opens no
+  inbound port and validates no user token. Do not add a block it would never read.
+- **`scheduler.temporal.task_queue` is ignored on purpose.** A run's queue is derived from the
+  definition id on both sides, so a pod and the Control Plane cannot disagree about it.
+  Making it configurable would be the bug.
+
+A test must never pick up the configuration a developer happens to have: `./config/configuration.yaml`
+is the default a pod resolves, so every sample's `tests/conftest.py` points `$CONFIG_FILE` and
+`$ENV_FILE` at nonexistent paths. Keep that fixture when adding a suite.
+
+The wider convergence of Fred's startup configuration is issue **#2351**; a Knowledge Base pod
+is no longer one of its outstanding cases.
 
 ---
 

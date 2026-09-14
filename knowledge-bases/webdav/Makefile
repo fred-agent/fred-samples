@@ -61,18 +61,19 @@ update: $(TARGET)/.uv-installed ## Re-resolve and update all dependencies
 	@touch $(TARGET)/.compiled
 
 # ── The image's two commands ───────────────────────────────────────────────────
-# A deployed pod gets its environment from its Deployment spec; locally it comes
-# from config/.env, which the SDK does not read itself.
+# Same shape as the agents pod: $ENV_FILE names the secrets file, which names
+# $CONFIG_FILE in turn. A deployed pod mounts a Secret and a ConfigMap and sets
+# the same two variables in its Deployment spec.
 
 .PHONY: publish
 publish: dev ## Declare this Knowledge Base to Fred (the deployment step)
 	@test -f $(ENV_FILE) || { echo "Missing $(ENV_FILE) — copy config/env.template"; exit 1; }
-	set -a; . $(ENV_FILE); set +a; VIRTUAL_ENV= $(UV_RUN) run python -m $(PY_PACKAGE) publish
+	ENV_FILE=$(ENV_FILE) VIRTUAL_ENV= $(UV_RUN) run python -m $(PY_PACKAGE) publish
 
 .PHONY: run
 run: dev ## Serve runs until stopped (needs Temporal and the Control Plane)
 	@test -f $(ENV_FILE) || { echo "Missing $(ENV_FILE) — copy config/env.template"; exit 1; }
-	set -a; . $(ENV_FILE); set +a; VIRTUAL_ENV= $(UV_RUN) run python -m $(PY_PACKAGE) run
+	ENV_FILE=$(ENV_FILE) VIRTUAL_ENV= $(UV_RUN) run python -m $(PY_PACKAGE) run
 
 # ── A share to try it against ──────────────────────────────────────────────────
 # Apache mod_dav + mod_dav_fs in a container — the same pair a production share

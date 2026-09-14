@@ -29,8 +29,8 @@ import logging
 from pathlib import Path
 from typing import Protocol
 
-from fred_sdk.knowledge_base import DocumentPublisher, MissingPodEnvironment
-from fred_sdk.knowledge_base.environment import PodEnvironment
+from fred_sdk.knowledge_base import DocumentPublisher, MissingPodConfiguration
+from fred_sdk.knowledge_base.configuration import PodConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +95,15 @@ class _KnowledgeFlowBoundary:
 def open_boundary(*, library_id: str, source_tag: str) -> Boundary:
     """Whichever boundary this environment can support."""
     try:
-        environment = PodEnvironment.from_env(require_temporal=False)
-    except MissingPodEnvironment as error:
-        logger.info("No Fred environment (%s): logging documents instead", error)
+        configuration = PodConfiguration.load()
+    except MissingPodConfiguration as error:
+        logger.info("No Fred configuration (%s): logging documents instead", error)
         return _LoggingBoundary()
 
-    if not environment.knowledge_flow_url:
+    if not configuration.knowledge_flow_url:
         logger.info("No Knowledge Flow URL set: logging documents instead")
         return _LoggingBoundary()
 
     return _KnowledgeFlowBoundary(
-        DocumentPublisher(environment, library_id=library_id, source_tag=source_tag)
+        DocumentPublisher(configuration, library_id=library_id, source_tag=source_tag)
     )

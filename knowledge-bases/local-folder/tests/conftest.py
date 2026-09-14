@@ -58,3 +58,16 @@ def notes(tmp_path: Path) -> Path:
     (folder / "nested" / "three.md").write_text("three", encoding="utf-8")
     (folder / "ignored.txt").write_text("not markdown", encoding="utf-8")
     return folder
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_fred_configuration(monkeypatch: pytest.MonkeyPatch):
+    """No test may pick up the configuration a developer happens to have.
+
+    A pod resolves `./config/configuration.yaml` by default, so a suite run
+    from this directory would otherwise reach the real Control Plane and
+    Knowledge Flow of whoever ran it — passing or failing on their machine's
+    state rather than on the code.
+    """
+    monkeypatch.setenv("CONFIG_FILE", "/nonexistent/configuration.yaml")
+    monkeypatch.setenv("ENV_FILE", "/nonexistent/.env")

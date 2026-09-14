@@ -1,0 +1,30 @@
+# Configured the way every Fred backend is: the same keys, parsed by the models
+# fred-core owns. Only the secret lives in the environment, and the line below
+# names which variable holds it.
+#
+# A deployed pod mounts this from a ConfigMap and points $CONFIG_FILE at it.
+
+knowledge_base:
+  # The dotted prefix this image owns. Every name it publishes lives under it,
+  # and Fred binds the prefix to this pod's client on the first publication.
+  prefix: "fred.samples"
+  control_plane_url: "http://localhost:8222/control-plane/v1"
+  # Optional: only a pod that ingests through Knowledge Flow needs it. Leave it
+  # out and a run logs what it would write instead.
+  knowledge_flow_url: "http://localhost:8111/knowledge-flow/v1"
+
+security:
+  m2m:
+    enabled: true
+    realm_url: "http://localhost:8080/realms/app"
+    # Shared by every sample here, because Fred claims the prefix above for
+    # whichever client publishes under it first.
+    client_id: "kb-fred.samples"
+    secret_env_var: "FRED_KB_CLIENT_SECRET" # pragma: allowlist secret (a variable name, not a value)
+
+scheduler:
+  temporal:
+    host: "localhost:7233"
+    namespace: "default"
+    # No task_queue: a run's queue is derived from the definition id on both
+    # sides, so that a pod and the Control Plane cannot disagree about it.

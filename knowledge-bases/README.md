@@ -47,26 +47,56 @@ Without it, `make run` stops immediately and tells you exactly that.
 
 ## What `publish` and `run` actually do
 
-Neither reads a YAML file. `fred_sdk.knowledge_base` reads the process
-environment and nothing else — the Makefile sources `config/.env` and hands it
-over. That is the whole configuration mechanism.
+A pod is configured exactly the way every other Fred component is: one
+`configuration.yaml` resolved from `$CONFIG_FILE`, the models `fred_core` owns,
+and environment variables carrying **secrets only**.
+
+```
+config/configuration.yaml   knowledge_base:   prefix, control_plane_url, knowledge_flow_url
+                            security.m2m:     realm_url, client_id, secret_env_var
+                            scheduler.temporal: host, namespace
+
+config/.env                 CONFIG_FILE, and the one secret the YAML names
+```
+
+`security.m2m` is parsed by `M2MSecurity` and `scheduler.temporal` by
+`TemporalSchedulerConfig` — the same model the Control Plane parses for
+Knowledge Base cadence, so both halves of the contract describe Temporal
+identically.
 
 `make publish` sends the declaration to the Control Plane:
 
 ```
-PUT $FRED_CONTROL_PLANE_URL/knowledge-bases/definitions/<definition id>
-     { "prefix": $FRED_KB_PREFIX, ...the declared fields }
+PUT $CONFIG.knowledge_base.control_plane_url/knowledge-bases/definitions/<definition id>
+     { "prefix": <knowledge_base.prefix>, ...the declared fields }
 ```
 
 Idempotent, so every deployment of the image replays it and what Fred stores
 stays what is deployed.
 
-`make run` connects to `$FRED_TEMPORAL_HOST` and polls one Temporal task queue.
-It opens no port of its own.
+`make run` connects to `scheduler.temporal.host` and polls one Temporal task
+queue. It opens no port of its own.
 
-**Nothing names that queue — it is derived.** Both the pod and the Control Plane
-compute it from the definition id with the same `fred_core` function, so the
-dispatching side and the worker side cannot disagree by construction:
+Both authenticate with Fred's own M2M mechanism
+(`fred_core.security.backend_to_backend_auth`, the module the other backends
+use, not a scheme of its own):
+
+```
+POST <security.m2m.realm_url>/protocol/openid-connect/token
+     grant_type=client_credentials
+     client_id=<security.m2m.client_id>
+     client_secret=$<security.m2m.secret_env_var>
+```
+
+then `Authorization: Bearer <token>` on every call. **The configuration names
+which variable holds the secret**; the value never appears in the YAML, and
+nothing on disk ever holds it.
+
+### The queue is derived, never configured
+
+Both the pod and the Control Plane compute it from the definition id with the
+same `fred_core` function, so the dispatching side and the worker side cannot
+disagree by construction:
 
 ```
 kb__ + fred.samples.webdav  →  kb__fred.samples.webdav
@@ -75,8 +105,9 @@ kb__ + fred.samples.webdav  →  kb__fred.samples.webdav
 `kb__` is the catalog namespace Knowledge Bases reserve, so they never collide
 with capabilities, agents or applications. The rest is the definition id, which
 already carries the prefix its contributor owns — which is why two contributors
-can never end up sharing a queue. Configuring a queue name would be the bug: a
-pod and a Control Plane that disagreed about it would lose every run silently.
+can never end up sharing a queue. `scheduler.temporal.task_queue` is therefore
+read by nobody: configuring it would be the bug, since a pod and a Control
+Plane that disagreed would lose every run silently.
 
 The first line `make run` prints tells you which queue it took:
 
@@ -84,55 +115,20 @@ The first line `make run` prints tells you which queue it took:
 INFO    Knowledge Base fred.samples.webdav serving runs on kb__fred.samples.webdav
 ```
 
-A queue that does not match the definition id is a contract break, not a
-setting to adjust.
+### Two failure modes worth recognising rather than debugging
 
-Both authenticate the same way — Fred's own M2M mechanism
-(`fred_core.security.backend_to_backend_auth`, the module the other backends
-use, not a scheme of its own):
+- **`control_plane_url` without its `/control-plane/v1` prefix** makes every
+  call 404 against a healthy Control Plane.
+- **The named secret variable unset** — the token exchange fails at startup
+  rather than at the first document, which is deliberate: a Knowledge Base acts
+  as a workload and Fred admits it as nothing else.
 
-```
-POST $FRED_KEYCLOAK_REALM_URL/protocol/openid-connect/token
-     grant_type=client_credentials
-     client_id=$FRED_KB_CLIENT_ID          → kb-fred.samples
-     client_secret=$FRED_KB_CLIENT_SECRET  → read from the environment
-```
+`security.user` is deliberately absent from a pod's configuration: it serves no
+user, opens no inbound port and validates no user token.
 
-then `Authorization: Bearer <token>` on every call. No token is ever written to
-disk, and the SDK opens no file to find the secret.
-
-### Why there is no `configuration_prod.yaml`
-
-The agent pod has one because it has a lot to configure: an HTTP server and its
-port, model and MCP catalogues, stores, security. Its `.env` carries two keys
-and the YAML carries the rest.
-
-A Knowledge Base pod has none of that — no inbound port, no store, no
-catalogue, no model. Its entire configuration is these, all in `config/.env`:
-
-| Variable | Needed by |
-|---|---|
-| `FRED_CONTROL_PLANE_URL` | both — **include the `/control-plane/v1` prefix** |
-| `FRED_KB_PREFIX` | both — the dotted prefix this image owns |
-| `FRED_KB_CLIENT_ID` | both |
-| `FRED_KB_CLIENT_SECRET` | both |
-| `FRED_KEYCLOAK_REALM_URL` | both |
-| `FRED_TEMPORAL_HOST` | `run` only |
-| `FRED_KNOWLEDGE_FLOW_URL` | optional — unset, a run logs instead of ingesting |
-| `FRED_TEMPORAL_NAMESPACE` | optional — defaults to `default` |
-
-That is the SDK's design, identical for every Knowledge Base, not a shortcut
-taken by these samples.
-
-Two failure modes worth recognising rather than debugging:
-`FRED_CONTROL_PLANE_URL` without its `/control-plane/v1` prefix makes every call
-404 against a healthy Control Plane; a missing `FRED_KB_CLIENT_SECRET` makes the
-SDK log that it is calling Fred unauthenticated and carry on, after which every
-call is rejected.
-
-**For the local stack, the template already holds the right values**, dev client
-secret included. `cp config/env.template config/.env` is enough — there is
-nothing to edit before `make publish`.
+**For the local stack the templates already hold the right values.** `cp
+config/env.template config/.env` is enough — there is nothing to edit before
+`make publish`.
 
 ---
 
