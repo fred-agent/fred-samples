@@ -30,7 +30,7 @@ deliberately small enough to read in one sitting.
 ## The three pieces
 
 ```
-ui/           static page, served at /apps/document-triage/
+ui/           static page, served at /apps/fred.samples.document-triage/
 api/          FastAPI service, reached at /app-services/document-triage/
 capability/   the agent tools — read-only, no credential
 ```
@@ -166,8 +166,8 @@ platform:
     feature_flags:
       enableApplications: true
   application_sources:
-    - app_id: document-triage
-      ui_prefix: /apps/document-triage      # must be exactly /apps/<app_id>
+    - app_id: fred.samples.document-triage
+      ui_prefix: /apps/fred.samples.document-triage   # must be exactly /apps/<app_id>
       version: 0.1.0
       icon: checklist
       display_name:
@@ -183,7 +183,7 @@ Frontend gateway:
 FRONTEND_APPLICATIONS_JSON: |
   [
     {
-      "app_id": "document-triage",
+      "app_id": "fred.samples.document-triage",
       "ui_upstream": "http://document-triage-ui.<namespace>.svc.cluster.local:80",
       "service_upstream": "http://document-triage-api.<namespace>.svc.cluster.local:8000",
       "service_required": true

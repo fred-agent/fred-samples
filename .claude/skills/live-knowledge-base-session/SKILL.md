@@ -32,8 +32,8 @@ Its equivalent is `knowledge-bases/<sample>/config/.env`, copied from the commit
 
     FRED_CONTROL_PLANE_URL="http://localhost:8222/control-plane/v1"   # the API prefix is required
     FRED_KEYCLOAK_REALM_URL="http://localhost:8080/realms/app"
-    FRED_KB_PROVIDER_ID="fred-samples"                                 # the namespace, not a base
-    FRED_KB_CLIENT_ID="knowledge-base-fred-samples"
+    FRED_KB_PREFIX="fred.samples"                                       # the prefix owned, not a base
+    FRED_KB_CLIENT_ID="kb-fred.samples"
     FRED_KB_CLIENT_SECRET="..."
     FRED_TEMPORAL_HOST="localhost:7233"                                # `run` only
 
@@ -54,15 +54,16 @@ environment, and that is not a bug.
 
 ## The trap that cannot be undone: first publication binds the namespace
 
-A Knowledge Base is named with two segments — `kb__<provider>__<definition>` — and Fred binds the
-**provider** to the client that publishes under it first. There is no rebinding path in the code.
+A Knowledge Base is named under a prefix its contributor owns — `fred.samples.local-folder` — and
+Fred claims that **prefix** for the client that publishes under it first. There is no rebinding path
+in the code.
 
 So a session that publishes from a convenient existing client — the evaluation worker, `agentic`,
 anything — does not burn one definition: it burns the **whole namespace**, and every Knowledge Base
 the image will ever publish under it. Recovering means deleting rows in Postgres by hand.
 
 Never suggest "just try it with another client to see". If an identity experiment is genuinely
-needed, use a throwaway provider id, and tell the developer that is what you are doing and why.
+needed, use a throwaway prefix, and tell the developer that is what you are doing and why.
 
 ## Preconditions — infra is the developer's job, not yours
 

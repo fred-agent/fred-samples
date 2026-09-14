@@ -35,7 +35,7 @@ from fred_samples_local_folder_kb.knowledge_base import DEFAULT_GLOB, kb, synchr
 
 
 def test_declaration_is_valid():
-    assert kb.id == "local-folder"
+    assert kb.id == "fred.samples.local-folder"
     assert kb.version and kb.name and kb.description
 
     fields = {field.key: field for field in kb.configuration_fields}
@@ -62,7 +62,7 @@ def test_the_handler_is_registered_and_resolvable():
 
 def test_resolving_without_a_handler_fails_clearly():
     undeclared = KnowledgeBase(
-        id="no-handler",
+        id="fred.samples.no-handler",
         version="1.0.0",
         name="No handler",
         description="Declares nothing to run.",

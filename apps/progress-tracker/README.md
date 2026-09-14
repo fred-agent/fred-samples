@@ -29,7 +29,7 @@ deliberately small enough to read in one sitting.
 ## The three pieces
 
 ```
-ui/           static page, served at /apps/progress-tracker/
+ui/           static page, served at /apps/fred.samples.progress-tracker/
 api/          FastAPI service, reached at /app-services/progress-tracker/
 capability/   the agent tools, installed into an agents pod
 ```
@@ -209,8 +209,8 @@ platform:
     feature_flags:
       enableApplications: true
   application_sources:
-    - app_id: progress-tracker
-      ui_prefix: /apps/progress-tracker
+    - app_id: fred.samples.progress-tracker
+      ui_prefix: /apps/fred.samples.progress-tracker
       version: 0.1.0
       icon: checklist
       display_name:
@@ -226,7 +226,7 @@ Frontend gateway — owns the server-side addresses:
 FRONTEND_APPLICATIONS_JSON: |
   [
     {
-      "app_id": "progress-tracker",
+      "app_id": "fred.samples.progress-tracker",
       "ui_upstream": "http://progress-tracker-ui.<namespace>.svc.cluster.local:80",
       "service_upstream": "http://progress-tracker-api.<namespace>.svc.cluster.local:8000",
       "service_required": true

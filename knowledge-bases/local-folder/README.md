@@ -41,17 +41,16 @@ make publish
 make run
 ```
 
-Fred names a Knowledge Base with two segments, like everything else a pod
-publishes (`agent__<runtime>__<agent>`, `model__<provider>__<name>`): this one is
-`kb__fred-samples__local-folder`. `fred-samples` is the namespace this
-repository's images own; `local-folder` is one Knowledge Base in it.
+Everything a contributor adds to Fred is named the same way: dotted segments
+under a prefix that contributor owns. This one is **`fred.samples.local-folder`**
+— `fred.samples` is the prefix this repository owns, exactly as its agents are
+`fred.samples.hello_graph`.
 
 Publishing needs a confidential Keycloak client holding the `app:service_agent`
-role. Fred binds the *provider* to whichever client publishes it first, so the
-client belongs to the namespace rather than to one Knowledge Base — a second
-sample here publishes under the same provider with the same client. In the local
-stack, `knowledge-base-fred-samples` is provisioned by fred-deployment-factory's
-`make keycloak-post-install`.
+role. Fred claims the *prefix* for whichever client publishes under it first, so
+the client is named after the prefix — a second sample here publishes under the
+same prefix with the same client. In the local stack, `kb-fred.samples` is
+provisioned by fred-deployment-factory's `make keycloak-post-install`.
 
 ---
 

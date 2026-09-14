@@ -29,6 +29,7 @@ repos:
             "--",
             "agents/fred_samples_agents",
             "knowledge-bases/local-folder/fred_samples_local_folder_kb",
+            "knowledge-bases/git-repository/fred_samples_git_kb",
           ]
         name: sast
   - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
@@ -42,3 +43,7 @@ repos:
         name: type-check (local-folder KB)
         files: ^knowledge-bases/local-folder/
         args: ["--project", "knowledge-bases/local-folder"]
+      - id: basedpyright
+        name: type-check (git-repository KB)
+        files: ^knowledge-bases/git-repository/
+        args: ["--project", "knowledge-bases/git-repository"]

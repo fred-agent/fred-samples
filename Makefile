@@ -5,7 +5,7 @@
 # MCP servers under servers/mcp/python/ are deliberately absent: their
 # Makefiles install and run a server, they ship no test suite.
 
-PACKAGES := agents knowledge-bases/local-folder
+PACKAGES := agents knowledge-bases/local-folder knowledge-bases/git-repository
 
 .DEFAULT_GOAL := help
 
