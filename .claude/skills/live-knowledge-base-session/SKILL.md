@@ -1,8 +1,8 @@
 ---
 name: live-knowledge-base-session
-description: Start the fred-samples Knowledge Base pod against the real local stack — publish its declaration, then serve runs — and watch both its stdout and the Control Plane's live while the developer drives the Platform Admin UI by hand. Use for manual observability on the Knowledge Base contract, or to check "does publication / enablement / worker registration actually behave and log correctly".
+description: Start the fred-samples Knowledge Base pod against the real local stack — publish its declaration, then serve runs — and watch both its stdout and the Control Plane's live while the developer drives the UI by hand. Use for manual observability on the Knowledge Base contract, or to check "does publication / enablement / instance creation / scheduled run actually behave and log correctly".
 user-invocable: true
-argument-hint: "[optional: which Knowledge Base sample is in scope — today only knowledge-bases/local-folder exists]"
+argument-hint: "[optional: which Knowledge Base sample is in scope — knowledge-bases/local-folder, knowledge-bases/git-repository or knowledge-bases/webdav]"
 ---
 
 # Live Knowledge Base Session (fred-samples)
@@ -21,36 +21,56 @@ conflating them wastes a session:
 - **The pod has no inbound port.** It is a Temporal worker, not an HTTP server. There is nothing
   to `curl`, no `/metrics`, no base path. Absence of a port is the design, not a misconfiguration.
 
-## The one rule this skill exists to enforce: the pod's environment, verified before starting
+## The one rule this skill exists to enforce: the pod's configuration, verified before starting
 
-The agent pod's equivalent rule is "always `configuration_prod.yaml`". **A Knowledge Base pod has
-no YAML configuration at all** — `fred_sdk.knowledge_base` reads the process environment and
-nothing else. Do not go looking for a config profile, and do not invent one.
+The agent pod's rule is "always `configuration_prod.yaml`", and a Knowledge Base pod now follows
+the same mechanism rather than one of its own: **one `configuration.yaml` resolved from
+`$CONFIG_FILE`, with the environment carrying secrets only.** A pod used to read the process
+environment and nothing else; it no longer does, so a session that goes looking for
+`FRED_CONTROL_PLANE_URL` or `FRED_KB_PREFIX` is reading a surface that was deleted.
 
-Its equivalent is `knowledge-bases/<sample>/config/.env`, copied from the committed
-`config/env.template`, and it must point at the security-on `fred-deployment-factory` stack:
+Two files per sample, and both matter:
 
-    FRED_CONTROL_PLANE_URL="http://localhost:8222/control-plane/v1"   # the API prefix is required
-    FRED_KEYCLOAK_REALM_URL="http://localhost:8080/realms/app"
-    FRED_KB_PREFIX="fred.samples"                                       # the prefix owned, not a base
-    FRED_KB_CLIENT_ID="kb-fred.samples"
-    FRED_KB_CLIENT_SECRET="..."
-    FRED_TEMPORAL_HOST="localhost:7233"                                # `run` only
+`knowledge-bases/<sample>/config/configuration.yaml` — committed, and already pointing at the
+security-on `fred-deployment-factory` stack:
 
-Before starting anything, read that file and confirm all six. If `.env` is missing, **say so and
-have the developer copy the template** — it is gitignored and per-session, but it carries a
-secret, so it is not yours to fabricate. Two failure modes to recognise instantly rather than
-debug:
+    knowledge_base:
+      prefix: "fred.samples"                                    # the prefix owned, not a base
+      control_plane_url: "http://localhost:8222/control-plane/v1"   # the API prefix is required
+      knowledge_flow_url: "http://localhost:8111/knowledge-flow/v1" # only if the pod ingests
+    security:
+      m2m:
+        enabled: true
+        realm_url: "http://localhost:8080/realms/app"
+        client_id: "kb-fred.samples"
+        secret_env_var: "FRED_KB_CLIENT_SECRET"
+    scheduler:
+      temporal:
+        host: "localhost:7233"
 
-- **`FRED_CONTROL_PLANE_URL` without `/control-plane/v1`** → every call 404s against a live,
-  healthy Control Plane.
-- **No `FRED_KB_CLIENT_SECRET`** → the SDK logs `No client secret set: calling Fred
-  unauthenticated` and proceeds. Against a security-on Control Plane every call is then rejected.
-  That warning line is the answer; read it before theorising.
+`knowledge-bases/<sample>/config/.env` — gitignored, copied from the committed `config/env.template`,
+and carrying `CONFIG_FILE` plus the secrets. If it is missing, **say so and have the developer copy
+the template**: it carries a secret, so it is not yours to fabricate.
 
-The Makefile exports this file for you (`make publish`, `make run`). Running
+Read both before starting anything. Three failure modes to recognise instantly rather than debug:
+
+- **`control_plane_url` without `/control-plane/v1`** → every call 404s against a live, healthy
+  Control Plane.
+- **No secret in the variable `security.m2m.secret_env_var` names** → `RuntimeError: Missing
+  Keycloak client secret in env: <VAR>`, raised before the first token call. The pod no longer
+  degrades to unauthenticated calls and then collects 401s: it fails fast, and that line is the
+  whole answer. Read it before theorising.
+- **`$CONFIG_FILE` unset or pointing elsewhere** → `No Knowledge Base configuration: ... Set
+  $CONFIG_FILE, or put one at ./config/configuration.yaml.` The default is resolved relative to
+  the working directory, so a stale `.env` sends the pod at a file the developer is not reading.
+
+`security.user` and `scheduler.temporal.task_queue` are absent on purpose, not missing: the pod
+serves no user and opens no inbound port, and a run's queue is derived on both sides. Do not add
+either.
+
+The Makefile exports `.env` for you (`make publish`, `make run`). Running
 `python -m <package> publish` by hand in a shell that has not sourced it will fail on missing
-environment, and that is not a bug.
+configuration, and that is not a bug.
 
 ## The trap that cannot be undone: first publication binds the namespace
 
@@ -78,26 +98,48 @@ the `app:service_agent` client role and no realm-management role. It is provisio
 tearing the stack down. A 401 on `/realms/app/protocol/openid-connect/token` means that step has
 not run — not that the pod is misconfigured.
 
+**Which Fred processes a run actually needs**, since this trips people up: the Control Plane API
+(it creates the instance and registers the schedule) and the pod itself (`make run` — its worker
+runs the synchronization workflow). The control-plane Temporal worker is **not** in this path; it
+registers `LifecycleManagerWorkflow` on its own queue and knows nothing of
+`FredKnowledgeBaseSynchronize`. Do not tell the developer to start it to make a run happen.
+
+Fred's own backends run natively from `~/Fred/fred`, and this developer runs them with the
+production profile against the real Postgres — never SQLite. Confirm which profile is active
+rather than assuming; a Control Plane on one database and a worker on another is a failure mode
+that looks like "the instance disappeared".
+
 ## What a session actually covers today
 
-Publication and enablement are built end to end. Execution is not: the Control Plane endpoints a
-run uses to fetch its context and report its result do not exist yet, and neither do team
-instances. **Nothing will ever be dispatched to the worker's queue.** Say this at the start of a
-session rather than letting the developer wait for a run that cannot come.
+Publication, enablement **and execution** are built end to end: a team creates an instance, the
+Control Plane registers a Temporal schedule for it, and runs are dispatched to the pod's queue on
+that schedule. A session can therefore wait for a run and expect one to arrive.
 
 | Step | Command | What to watch for |
 |---|---|---|
 | Publish | `make publish` (from the sample dir) | pod: `Published Knowledge Base <id> version <v>`; Control Plane: `[knowledge-base-publication] stored declaration for <id> version <v>` |
 | Admin UI | developer, in the browser | the definition appears under `/admin/knowledge-bases`, with no online/health claim anywhere |
 | Enable | developer, in the browser | enablement writes the ReBAC relation and stores **no** configuration |
-| Serve | `make run` | pod: `Knowledge Base <id> serving runs on kb-<id>` — then silence, which is correct |
+| Create an instance | developer, from the team's Knowledge Bases screen | four effects, none of them a log line: the knowledge-flow library, the instance row, the pod's `editor` grant over that one library, and a Temporal schedule `control-plane-kb-<instance_id>`. Read them in the Temporal UI (8233) and the database, not in stdout |
+| Serve | `make run` | pod: `Knowledge Base <id> serving runs on kb__<id>` — then silence until the schedule fires |
+| A run | the schedule firing, or the developer triggering it from the Temporal UI — **Fred has no trigger button** | workflow `FredKnowledgeBaseSynchronize` on queue `kb__<definition id>`; then the **sample's own** lines, e.g. `published <path>` / `retracted <path>` and a closing summary |
 
-The queue name is derived (`kb-` + definition id), identically on both sides. A worker announcing a
-queue that does not match the definition id is a contract break worth stopping the session for.
+The queue name is derived — `kb__` (two underscores) + definition id — identically on both sides,
+from `knowledge_base_catalog_id` in `fred_core`. A worker announcing a queue that does not match
+the definition id is a contract break worth stopping the session for.
 
-Worth watching, because identity and routing disagree today: the queue carries the definition but
-**not** the provider, so two providers publishing a definition of the same name would be dispatched
-the same runs. Nothing exercises that yet — it is a finding to report, not a symptom to expect.
+**The SDK logs nothing per run.** Everything you see once a run starts comes from the sample's own
+handler. Silence on the pod during a run that Temporal shows as completed is the observability gap
+below, not a failed run — check the workflow's status in the Temporal UI before calling it broken.
+
+A schedule outlives the instance that created it. If the developer deleted an instance by hand, or
+a creation failed part-way (`[knowledge-base] could not undo ... it may need clearing by hand`), an
+orphaned schedule keeps firing against a queue nobody serves. Report it; do not delete it yourself.
+
+The queue carries the definition and **not** the provider, which is safe only because the prefix
+claim above makes a definition id unforgeable: no second client can publish under a prefix another
+one owns, so two providers cannot end up sharing a queue. If that claim is ever relaxed, this
+derivation becomes ambiguous — worth remembering, not worth watching for today.
 
 ## Watching, not polling
 
@@ -134,12 +176,16 @@ to every durable stream. The Control Plane's own logging is unaffected — that 
 
 ## Before starting anything — check for a stale worker
 
-    ps -ef | grep -F 'fred_samples_local_folder_kb run' | grep -v grep
+    ps -ef | grep -E 'fred_samples_(local_folder|git|webdav)_kb run' | grep -v grep
     ss -ltnp | grep -E ':8222|:7233'
 
 A forgotten `make run` from an earlier session keeps polling the same derived queue. Two workers on
 one queue means work lands in whichever process wins the race, and the session's logs will look
 inexplicably empty. Only kill processes confirmed stale.
+
+The WebDAV sample also brings up an Apache container to serve its test share
+(`.claude/skills/webdav-share`). Check for it too, and remember it is the sample's, not the
+developer's infra: `docker ps --filter name=fred-samples-webdav-share`.
 
 ## Ending the session
 
