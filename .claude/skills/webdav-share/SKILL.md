@@ -85,22 +85,30 @@ A removal only ever comes from a run that reported `exhaustive: true`.
 
 ## How far end to end actually goes
 
-Say this at the start rather than letting the developer wait for something that
-cannot come. Against a local Fred today:
+All the way, schedule included. Exercised against a local security-on stack:
 
-- **Works:** the share, the walk, the entity tags, the reconciliation, and real
-  ingestion into a real library through `LIBRARY=` — documents appear in the UI.
-- **Works:** `make publish` puts the definition in front of an admin, and
-  enablement binds it to a team.
-- **Not built yet:** the scheduled dispatch. The generic workflow and activity
-  adapter, the run record and the team-facing instance form are unchecked tasks
-  in the `knowledge-base-sdk-contract` OpenSpec change, so **no run is ever
-  dispatched to the worker's queue**. `make run` will sit there, correctly,
-  forever.
+- **The share, the walk, the entity tags, the reconciliation** — all of it
+  reachable through `make sync` with no Fred running at all.
+- **Real ingestion**, either through `make sync LIBRARY=…` (the developer tool,
+  writing with the pod's own identity) or through a dispatched run.
+- **Publication and enablement**: `make publish` puts the definition in front of
+  an admin, and enablement binds it to a team.
+- **Scheduled dispatch**: an instance's cadence fires, the Control Plane starts
+  `FredKnowledgeBaseSynchronize` on `kb__<definition id>`, and the pod serves it.
 
-So "end to end" today means: share → walk → Knowledge Flow → library, driven by
-`make sync LIBRARY=…`. It does not mean a schedule firing. Both halves are real;
-only the trigger between them is missing.
+So "end to end" means both routes: `make sync LIBRARY=…` for a share you drive
+by hand, and an instance's schedule for the real thing.
+
+If `make run` sits silent, the run is not reaching its queue — check that an
+instance exists, that its schedule is not paused, and that the queue the worker
+announced at startup matches the definition id. Do not report the trigger as
+unbuilt without checking those three.
+
+One failure worth recognising instantly: a run whose first call is
+`GET …/instances/<id>/runs/<id>/context` answered **404** is not a pod problem.
+The Control Plane resolves that route through the definition and the instance
+only — never the run id — so a 404 means one of those two is gone. The usual
+cause is a schedule that outlived the instance that created it, still firing.
 
 ## Preconditions that are not yours to satisfy
 

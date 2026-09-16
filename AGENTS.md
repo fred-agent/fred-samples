@@ -2,9 +2,10 @@
 
 This repository uses root `CLAUDE.md` as the primary development workflow and governance guide.
 
-Codex and other AI coding assistants must read and follow root `CLAUDE.md` before making code or documentation changes.
-
-Do not duplicate repository-specific names in this file. Use the `Repository parameters` section in root `CLAUDE.md` as the single source of truth for folder names, package names, import names, validation commands, and reference paths.
+Codex and other AI coding assistants must read and follow root `CLAUDE.md` before making code or
+documentation changes. Everything repository-specific — the layout of `agents/`,
+`knowledge-bases/`, `apps/`, `servers/mcp/python/` and `dockerfiles/`, which packages are covered
+by automated validation, and which commands to run — is described there and is not repeated here.
 
 ---
 
@@ -14,22 +15,24 @@ Before making any change, read and follow:
 
 1. Root `CLAUDE.md`
 2. This root `AGENTS.md`
-3. Any nested `AGENTS.md`, `AGENTS.override.md`, or `CLAUDE.md` files in the target subdirectory
+3. Any nested `AGENTS.md` or `CLAUDE.md` in the target subdirectory
 4. The relevant local `README.md`, `Makefile`, and package metadata
 
-When `CLAUDE.md` refers to Claude or Claude Code, apply the same instruction to Codex unless technically impossible.
+When `CLAUDE.md` refers to Claude or Claude Code, apply the same instruction to Codex unless
+technically impossible.
 
 ---
 
 ## Conflict resolution order
 
 1. Explicit user instruction
-2. Closest nested `AGENTS.override.md`, `AGENTS.md`, or `CLAUDE.md`
+2. Closest nested `AGENTS.md` or `CLAUDE.md`
 3. Root `CLAUDE.md`
 4. Root `AGENTS.md`
 5. Local README, Makefile, or package metadata guidance
 
-If there is a conflict that cannot be resolved safely, stop and ask for clarification before changing files.
+If there is a conflict that cannot be resolved safely, stop and ask for clarification before
+changing files.
 
 ---
 
@@ -41,20 +44,30 @@ If there is a conflict that cannot be resolved safely, stop and ask for clarific
 - Do not copy internal Fred code unless explicitly requested.
 - Prefer current public `fred-sdk` and `fred-runtime` APIs.
 - Keep default validation offline.
-- Use the repository parameters in root `CLAUDE.md`; do not assume fixed folder or package names.
 - Inspect the actual filesystem before changing imports, paths, registry entries, or configuration.
-- Update documentation when commands, package names, import paths, agent IDs, MCP dependencies, ports, configuration, or runtime behavior change.
+- Describe only what this repository can prove: no citations of OpenSpec changes, RFCs, design
+  documents or issue numbers that live in another repository, and no claims about Fred's behaviour
+  that cannot be checked from this tree. See "Only claim what this repository can prove" in root
+  `CLAUDE.md`.
+- Update documentation when commands, package names, import paths, agent IDs, MCP dependencies,
+  ports, configuration, or runtime behavior change. A command written in a README must exist.
 
 ---
 
 ## Validation
 
-For changes under the configured agent package directory, run the commands defined in root `CLAUDE.md` from that directory:
+From the repository root, before reporting any change done:
 
 ```bash
-cd <AGENT_PACKAGE_DIR>
-<QUALITY_COMMAND>
-<TEST_COMMAND>
+make code-quality
+make test
 ```
+
+Both fan out to the packages registered in the root `Makefile`. To work on a single package, run
+the same two targets from that package's directory.
+
+Not every area is covered by these commands — `servers/mcp/python/` and `apps/` are outside them,
+for the reasons given in root `CLAUDE.md`. Know which regime the code you touched is in before
+reporting it validated.
 
 Do not claim validation succeeded unless the commands were actually run successfully.

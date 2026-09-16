@@ -73,7 +73,7 @@ Remarque : c’est un endpoint « machine » (MCP). Ouvrir l’URL dans un nav
 
 ## Utilisation avec Fred
 
-- Le fichier `configuration_academy.yaml` est déjà configuré pour référencer l’endpoint MCP local `http://127.0.0.1:9797/mcp`.
+- Ce serveur est déclaré dans `agents/config/mcp_catalog.yaml` sous l’id `mcp-postal-business-demo`, qui pointe déjà sur l’endpoint MCP local `http://localhost:9797/mcp`.
 - Étapes typiques :
   1. Démarrer ce serveur avec `make server`.
   2. Dans Fred, créer un agent et lui rattacher ce serveur MCP (la config pointe déjà sur l’endpoint).

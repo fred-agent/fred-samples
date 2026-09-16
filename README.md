@@ -3,7 +3,7 @@
 Ready-to-run examples for the [Fred](https://fredk8.dev) agentic platform.
 
 Each sample is self-contained: a Python agent pod that you start with `make run` and
-talk to with `make chat`, paired with MCP servers when its workflow depends on them.
+talk to with `make cli`, paired with MCP servers when its workflow depends on them.
 
 > **Documentation** → [fredk8.dev](https://fredk8.dev)
 
@@ -329,7 +329,7 @@ make run     # installs deps, starts pod on port 8010
 In a second terminal, from the `agents/` directory:
 
 ```bash
-make chat
+make cli
 ```
 
 You will see:

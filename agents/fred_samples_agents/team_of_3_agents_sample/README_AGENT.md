@@ -50,7 +50,7 @@ make run
 
 In another terminal, from `agents/`:
 ```bash
-make chat
+make cli
 ```
 
 Inside `fred-agents-cli`, select:

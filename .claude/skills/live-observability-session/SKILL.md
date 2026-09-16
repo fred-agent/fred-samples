@@ -8,7 +8,7 @@ argument-hint: [optional: which MCP demo servers to include alongside the pod �
 # Live Observability Session (fred-samples)
 
 A **collaborative** working mode, not an automated test run: the developer drives the
-`fred-agents-cli` chat client (`make chat`) or hits the API by hand; you start the pod, tail its
+`fred-agents-cli` chat client (`make cli`) or hits the API by hand; you start the pod, tail its
 stdout, and report what you see. You never call a business endpoint or drive a scenario yourself
 — see "The protocol" below. This mirrors `~/Fred/fred/.claude/skills/live-observability-session/SKILL.md`
 (the canonical version, same protocol) — adapted here because fred-samples ships exactly **one**
@@ -27,7 +27,7 @@ stop — never the standalone `configuration.yaml`.** The two profiles genuinely
 purposes here and must not be conflated:
 
 - `configuration.yaml` (security off) is the repo's own **5-minute quick start** — no Keycloak,
-  no Postgres, `make chat` against a bare pod. Good for a developer exploring the sample code
+  no Postgres, `make cli` against a bare pod. Good for a developer exploring the sample code
   itself. **Not** what this skill is for.
 - `configuration_prod.yaml` (security on, Keycloak/OpenFGA/Postgres/OpenSearch) is what a real
   observability session needs — it's the only profile where the pod behaves the way it would in
@@ -86,7 +86,7 @@ Launch whichever subset is in scope in parallel — independent Bash calls in on
 `run_in_background: true`. Ask the developer which sample agent (and therefore which MCP servers,
 if any) is in scope before starting things speculatively.
 
-There is **no frontend** in this repo — the developer drives the pod via `make chat`
+There is **no frontend** in this repo — the developer drives the pod via `make cli`
 (`fred-agents-cli`, an interactive terminal client) or a direct API call, not a browser.
 
 `make run` installs deps first if needed — the first launch after a clean checkout will be slower;
@@ -96,7 +96,7 @@ don't mistake that for a hang.
 
 Use the **Monitor** tool against the pod's (and any MCP server's) background shell to stream
 stdout live — every line becomes a notification — rather than periodically re-reading a log file.
-This lets you correlate "developer just sent X in `make chat`" with the log line it produced in
+This lets you correlate "developer just sent X in `make cli`" with the log line it produced in
 near real time. Stop every Monitor you started once the developer is done or the session's
 question is answered.
 
@@ -126,7 +126,7 @@ ship the same `StoreEmitHandler`/`AUDIT_LOGGER_NAME` mechanism):
 
 ## The protocol
 
-- The developer drives `make chat` or the API. You do not call a business endpoint or run a
+- The developer drives `make cli` or the API. You do not call a business endpoint or run a
   scenario against the live pod yourself. If a specific action would help diagnose something,
   propose it and let the developer perform it, or ask before running it yourself.
 - When the developer reports something, diagnose from the logs **first** — don't guess at a root

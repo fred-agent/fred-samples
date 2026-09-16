@@ -1,11 +1,11 @@
 # Minimal Makefile to set up and run the standard MCP Server
 # --------------------------------------------------
-# Simply run `make server` to handle the full workflow (install + run).
+# Simply run `make run` to handle the full workflow (install + run).
 
 VENV_DIR := .venv
 PYTHON := $(VENV_DIR)/bin/python
 UVICORN := $(PYTHON) -m uvicorn
-PORT := 9797
+PORT := 9799
 HOST := 127.0.0.1
 APP_MODULE := minimal_mcp_server.server_mcp:app
 
@@ -32,7 +32,9 @@ install: venv
 	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
 
 # 3. Run the server (Requires install)
-run: install
+# Both names, because `server` is declared .PHONY above: without a recipe it
+# would succeed silently and start nothing.
+run server: install
 	@echo "🚀 Starting standard MCP server on http://$(HOST):$(PORT)"
 	@echo "Using module: $(APP_MODULE)"
 	$(UVICORN) $(APP_MODULE) --host $(HOST) --port $(PORT) --reload

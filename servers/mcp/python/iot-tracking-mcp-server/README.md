@@ -8,7 +8,8 @@ Small MCP server for demoing agent orchestration with live-ish telemetry:
 - pickup locker occupancy
 - deterministic event timelines you can advance step-by-step
 
-This is designed to complement the academy postal business MCP server.
+This is designed to complement the `postal-service-mcp-server` beside it; the `postal_tracking`
+sample agent uses both.
 
 ## Run
 

@@ -43,7 +43,9 @@ install: venv
 	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
 
 # 3. Run the server (Requires install)
-run: install
+# Both names, because `server` is declared .PHONY above: without a recipe it
+# would succeed silently and start nothing.
+run server: install
 	@echo "🚀 Starting standard MCP server on http://$(HOST):$(PORT)"
 	@echo "Using module: $(APP_MODULE)"
 	@echo "Demo OIDC: enabled=$(DEMO_MCP_OIDC_ENABLED) realm=$(DEMO_MCP_KEYCLOAK_REALM_URL) client_id=$(DEMO_MCP_KEYCLOAK_CLIENT_ID)"

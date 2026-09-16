@@ -193,12 +193,17 @@ burns the whole prefix.
 | `publish` puts the definition in front of an admin | works |
 | enabling it for a team | works |
 | writing documents into a real library | works — `webdav` only, via `make sync LIBRARY=<id>` |
-| a **schedule** dispatching a run to `make run` | **not built yet** |
+| a **schedule** dispatching a run to `make run` | works |
 
-The workflow and activity adapter are unchecked tasks in the
-`knowledge-base-sdk-contract` OpenSpec change. `make run` will sit there
-correctly and forever, because nothing dispatches to its queue. Expect that
-rather than debugging it.
+The whole chain has been exercised against a local security-on stack: a
+definition published, an instance created from the UI, a Temporal schedule
+registered for it, runs dispatched on `kb__<definition id>`, the documents
+ingested, and the next run downloading nothing because the entity tags matched.
+
+If `make run` sits silent instead, the run is not reaching its queue. Check, in
+this order, that an instance exists, that its schedule is not paused, and that
+the queue the worker announced at startup matches the definition id — rather
+than assuming the trigger is unbuilt.
 
 ---
 

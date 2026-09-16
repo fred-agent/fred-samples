@@ -161,8 +161,11 @@ watch: dev ## Synchronize over and over: make watch URL=... LIBRARY=... [INTERVA
 		$(if $(INTERVAL),--interval $(INTERVAL),)
 
 # Shared by sync and watch: one list, so the two can never drift apart.
+# WEBDAV_USER, never USER: make imports the environment, and $USER is always set
+# to the developer's login — so `--username <login>` would be sent to every
+# share without anyone asking for it.
 SYNC_FLAGS = --url '$(URL)' \
-	$(if $(USER),--username '$(USER)',) \
+	$(if $(WEBDAV_USER),--username '$(WEBDAV_USER)',) \
 	$(if $(INCLUDE),--include '$(INCLUDE)',) \
 	$(if $(EXCLUDE),--exclude '$(EXCLUDE)',) \
 	$(if $(MAX_FILES),--max-files $(MAX_FILES),) \

@@ -24,8 +24,8 @@ servers:
     auth_mode: "no_token"
 
   # ── Postal Tracking sample ───────────────────────────────────────────────────
-  # Run: cd ../servers/mcp/python/postal_business_mcp_server && make run  (port 9797)
-  # Run: cd ../servers/mcp/python/iot_tracking_mcp_server   && make run  (port 9798)
+  # Run: cd ../servers/mcp/python/postal-service-mcp-server && make run  (port 9797)
+  # Run: cd ../servers/mcp/python/iot-tracking-mcp-server   && make run  (port 9798)
 
   - id: "mcp-postal-business-demo"
     name: "Postal Business Demo MCP"

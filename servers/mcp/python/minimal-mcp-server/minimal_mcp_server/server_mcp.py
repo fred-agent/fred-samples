@@ -7,14 +7,11 @@ This exposes the Streamable HTTP transport at `/mcp` and is compatible with
 modern MCP clients.
 
 Run:
-  uvicorn minimal_mcp_server.server_mcp:app --host 127.0.0.1 --port 9797 --reload
-  or: make server
+  uvicorn minimal_mcp_server.server_mcp:app --host 127.0.0.1 --port 9799 --reload
+  or: make run
 
 Tools implemented:
-  - validate_address(country, city, postal_code, street)
-  - quote_shipping(weight_kg, distance_km, speed)
-  - create_label(receiver_name, address_id, service)
-  - track_package(tracking_id)
+  - random_numbers(count, min_value, max_value)
 """
 
 from __future__ import annotations
@@ -28,14 +25,9 @@ try:
 except Exception as e:  # pragma: no cover - helpful error at import time
     raise ImportError(
         "The 'mcp' package is required for minimal_mcp_server.server_mcp.\n"
-        "Install it via: pip install \"mcp[fastapi]\"\n"
+        "Install it via: pip install \"mcp==1.28.1\"\n"
         f"Import error: {e}"
     )
-
-
-# In-memory stores (tutorial-grade persistence)
-_ADDRESSES: Dict[str, Dict[str, str]] = {}
-_PACKAGES: Dict[str, Dict[str, Any]] = {}
 
 
 # Create a FastMCP server (provides @tool and compatible transports)
@@ -78,4 +70,4 @@ app = server.streamable_http_app()
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
-    uvicorn.run("minimal_mcp_server.server_mcp:app", host="127.0.0.1", port=9797, reload=False)
+    uvicorn.run("minimal_mcp_server.server_mcp:app", host="127.0.0.1", port=9799, reload=False)

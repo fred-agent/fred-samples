@@ -126,7 +126,7 @@ the command line:
 
 ```bash
 export FRED_SAMPLES_WEBDAV_PASSWORD=...
-make sync URL=https://share.example.com/documents/ USER=reader
+make sync URL=https://share.example.com/documents/ WEBDAV_USER=reader
 ```
 
 ---

@@ -28,7 +28,7 @@ In this example, we use the “FastMCP” API from the official `mcp` SDK, which
 The example server is in `minimal_mcp_server/server_mcp.py` and does three things:
 
 - Creates an MCP server with `FastMCP` and exposes the app through `app = server.streamable_http_app()` (endpoint `/mcp`).
-- Declares four educational tools:
+- Declares a single educational tool:
   - `random_numbers(count, min_value, max_value)`: returns a list of `count` values between `min_value` and `max_value`.
 
 File to inspect: `minimal_mcp_server/server_mcp.py`
@@ -39,16 +39,16 @@ File to inspect: `minimal_mcp_server/server_mcp.py`
 
 - Python 3.12+ (a virtual environment will be created by the Makefile)
 - `make`
-- Port `9797` free on `127.0.0.1`
+- Port `9799` free on `127.0.0.1`
 
 ---
 
 ## Installation and Launch
 
-The command below creates a venv, installs dependencies (`mcp[fastapi]`, `uvicorn`, `fastapi`) and starts the server:
+The command below creates a venv, installs dependencies (`mcp==1.28.1`, `uvicorn`, `fastapi`) and starts the server:
 
 ```bash
-make server
+make run
 ```
 
 Manual equivalent:
@@ -57,11 +57,11 @@ Manual equivalent:
 python -m venv .venv
 . .venv/bin/activate
 pip install --upgrade pip
-pip install "mcp[fastapi]" fastapi uvicorn
-uvicorn minimal_mcp_server.server_mcp:app --host 127.0.0.1 --port 9797 --reload
+pip install "mcp==1.28.1" fastapi uvicorn
+uvicorn minimal_mcp_server.server_mcp:app --host 127.0.0.1 --port 9799 --reload
 ```
 
-Exposed endpoint: `http://127.0.0.1:9797/mcp`
+Exposed endpoint: `http://127.0.0.1:9799/mcp`
 
 Note: this is a “machine endpoint” (MCP). Opening it in a browser will not show a readable page; it is intended for MCP clients.
 
@@ -69,11 +69,11 @@ Note: this is a “machine endpoint” (MCP). Opening it in a browser will not s
 
 ## Using with Fred
 
-- The file `configuration_academy.yaml` is already configured to reference the local MCP endpoint `http://127.0.0.1:9797/mcp` as `minimal_mcp_service`.
+- This server is deliberately **absent** from `agents/config/mcp_catalog.yaml`: it is a template, and no sample agent depends on it.
 - Typical steps:
-  1. Start this server with `make server`.
-  2. In Fred, create an agent and attach this MCP server (the config already points to the endpoint).
-  3. Chat with the agent: ask it to validate an address, compute a shipping quote, create a label, etc. The agent will call the MCP tools accordingly.
+  1. Start this server with `make run`.
+  2. Add an entry to `agents/config/mcp_catalog.yaml` pointing at `http://localhost:9799/mcp`, modelled on the entries already there, and attach it to an agent.
+  3. Chat with the agent: ask it to generate random numbers — `random_numbers` is the only tool this server declares.
 
 Useful agent prompts:
 
@@ -109,10 +109,10 @@ Tips:
 - “ImportError: No module named 'mcp.server.fastapi'”
 
   - Recent versions of the `mcp` SDK no longer export this module. The example uses `FastMCP` and `server.streamable_http_app()` (see `minimal_mcp_server/server_mcp.py`).
-  - If you have an old venv, run: `make clean && make server`.
+  - If you have an old venv, run: `make clean && make run`.
 
 - “Address already in use”
-  - Port `9797` is in use. Change it in the Makefile or pass `--port` to Uvicorn.
+  - Port `9799` is in use. Change it in the Makefile or pass `--port` to Uvicorn.
 
 ---
 
