@@ -1,4 +1,5 @@
 app:
+  runtime_id: "fred-samples-agents"
   name: "Fred Sample Agents"
   base_url: "/samples/agents/v1"
   port: 8010
