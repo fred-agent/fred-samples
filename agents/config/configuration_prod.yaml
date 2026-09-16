@@ -1,6 +1,6 @@
 app:
-  # Doit être identique à l'entrée de ce pod dans les runtime_catalog_sources
-  # du control-plane : c'est cette égalité qui relie une ligne de log à son KPI.
+  # Must match this pod's entry in the control-plane's runtime_catalog_sources:
+  # that equality is what joins a log line to its own KPI.
   runtime_id: "fred-samples-agents"
   name: "Fred Sample Agents"
   base_url: "/samples/agents/v1"

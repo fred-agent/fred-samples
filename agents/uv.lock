@@ -577,7 +577,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fred-sdk", specifier = ">=3.3.5" },
+    { name = "fred-sdk", editable = "../../fred/libs/fred-sdk" },
     { name = "langchain-core" },
 ]
 
@@ -593,7 +593,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fred-sdk", specifier = ">=3.3.5" },
+    { name = "fred-sdk", editable = "../../fred/libs/fred-sdk" },
     { name = "httpx" },
     { name = "langchain-core" },
 ]
@@ -695,7 +695,7 @@ dev = [
 
 [[package]]
 name = "fred-runtime"
-version = "3.5.2"
+version = "4.0.0"
 source = { editable = "../../fred/libs/fred-runtime" }
 dependencies = [
     { name = "alembic" },
@@ -820,7 +820,7 @@ dev = [
 
 [[package]]
 name = "fred-sdk"
-version = "3.7.0"
+version = "3.8.0"
 source = { editable = "../../fred/libs/fred-sdk" }
 dependencies = [
     { name = "fred-core" },
