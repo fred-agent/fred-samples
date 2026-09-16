@@ -1,11 +1,11 @@
 # Fred Samples
 
-Ready-to-run examples for the [Fred](https://fredk8.dev) agentic platform.
+Ready-to-run examples for the [Fred](https://fredlab.dev) agentic platform.
 
 Each sample is self-contained: a Python agent pod that you start with `make run` and
 talk to with `make cli`, paired with MCP servers when its workflow depends on them.
 
-> **Documentation** → [fredk8.dev](https://fredk8.dev)
+> **Documentation** → [fredlab.dev](https://fredlab.dev)
 
 ---
 
@@ -396,6 +396,6 @@ For container build/run/push workflows, see:
 
 ## Learn more
 
-- Platform documentation: [fredk8.dev](https://fredk8.dev)
-- How to build your own agent from scratch: [fredk8.dev/docs/guides/how-to-use-fred](https://fredk8.dev/docs/guides/how-to-use-fred/)
+- Platform documentation: [fredlab.dev](https://fredlab.dev)
+- How to build your own agent from scratch: [fredlab.dev/docs/guides/how-to-use-fred](https://fredlab.dev/docs/guides/how-to-use-fred/)
 - Fred on GitHub: [github.com/ThalesGroup/fred](https://github.com/ThalesGroup/fred)
