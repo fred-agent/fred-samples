@@ -10,8 +10,8 @@ dependencies = [
   # fred-runtime==3.4.0 pair is mismatched (fred_runtime.app.agent_app
   # imports TeamOperationRouteRule, which does not exist in fred_sdk
   # 3.4.0) — confirmed broken 2026-08-01, fixed by the 3.4.1 publish.
-  "fred-sdk>=3.4.1",
-  "fred-runtime>=3.4.2",
+  "fred-sdk>=4.0.0",
+  "fred-runtime>=4.0.0",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
   # Sample capability from apps/progress-tracker. Installing it IS the

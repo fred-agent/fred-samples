@@ -11,7 +11,7 @@ dependencies = [
   # PyPI yet, so `make dev` resolves it from the local monorepo checkout below
   # and `make dev-pypi` fails on purpose rather than installing an SDK without
   # the surface this sample needs.
-  "fred-sdk[knowledge-base]>=3.7.0",
+  "fred-sdk[knowledge-base]>=4.0.0",
 ]
 
 # The contract's entry point is `python -m fred_samples_local_folder_kb`

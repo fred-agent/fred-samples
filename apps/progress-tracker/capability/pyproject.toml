@@ -7,7 +7,7 @@ license = { text = "Apache-2.0" }
 dependencies = [
     # Same floor as the sample agent pod, so installing this into it cannot
     # drag the SDK backwards.
-    "fred-sdk>=3.3.5",
+    "fred-sdk>=4.0.0",
     "httpx",
     "langchain-core",
 ]

@@ -8,7 +8,7 @@ dependencies = [
     # Same floor as the sample agent pod, so installing this into it cannot
     # drag the SDK backwards. No httpx here: this capability makes no outbound
     # call of its own -- it only uses the ports the runtime injects.
-    "fred-sdk>=3.3.5",
+    "fred-sdk>=4.0.0",
     "langchain-core",
 ]
 
