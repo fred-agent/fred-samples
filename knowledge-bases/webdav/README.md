@@ -22,39 +22,42 @@ declaration and the handler are the whole authoring surface — then
 
 ---
 
-## The idea: the share is asked everything, every time
+## The idea: both sides are asked everything, every time
 
 The sibling [`git-repository`](../git-repository) sample keeps nothing at all,
 because Git answers "what changed since this revision" on its own. WebDAV has
 no such question. There is one verb that lists a folder and one that fetches a
 file, and nothing that compares two moments in time.
 
-So this one asks for the whole tree on every run, and keeps the versions the
-last run accepted:
+So this one asks for the whole tree on every run, and asks the library what it
+holds. It keeps nothing of its own:
 
 | What | Where it lives |
 |---|---|
 | What the share holds now | the share, re-listed on every run |
-| What the library already has | a JSON ledger beside the pod |
+| What the library already has | the library, re-read on every run — documents ingested or still being ingested; failed ones are absent, so the next run writes them again |
 | A document's identity | its path on the share, which Fred stores as the source key |
-| A document's version | the share's entity tag — equal tags mean equal bytes |
+| A document's version | the share's entity tag, given to Fred and read back — equal tags mean equal bytes |
 
 That trade buys something the Git sample cannot have: because the listing is
 **exhaustive**, a file that is gone really is gone, and the run can retract its
 document. The Git sample's full pass can never do that — it has no inventory to
 compare against.
 
-**The ledger is a cache, not a source of truth.** Delete it and the next run
-republishes everything (idempotent — a document is addressed by its path on
-both sides) and retracts nothing. It costs one expensive run, never
-correctness. It lives per instance under
-`${XDG_STATE_HOME:-~/.local/state}/fred-samples-webdav-kb/`, and
-`$FRED_SAMPLES_WEBDAV_STATE_DIR` moves it — a deployed pod points that at a
-volume.
+**Nothing is remembered between runs, which is what makes this self-healing.**
+A write is *accepted*, not finished: Knowledge Flow answers 202 with a task
+and ingests afterwards. The run follows each task to its end and counts a
+document as written only once it has landed; an ingestion that fails is this
+run's `write_failed`, and one still running when the wait gives up is reported
+the same way. Either way nothing is kept here: the next run asks the library
+again, and a document it does not list is simply written again. There is no
+sidecar to lose, nothing to mount a volume for, and no way for a pod's record
+of the library to disagree with the library.
 
-Why a ledger at all, rather than asking Fred what the library holds? Because
-Fred does not offer that: a library's contents cannot be read back. The same
-gap is why the sibling sample's full pass issues no removals.
+The price is that an absence has one meaning too few: never written and failed
+are the same absence, and both are offered again — idempotent. A document still
+being ingested is listed with its version and is not offered again unless the
+share's tag moved on; a wait that gave up is only this run's `write_failed`.
 
 ---
 
@@ -94,6 +97,30 @@ make sync URL=http://localhost:8088/dav/
 make share-run SHARE_DIR=/path/to/your/notes
 ```
 
+### Optional HTTPS for local testing
+
+Provide a directory outside the repository containing `server.crt` (PEM server
+certificate, including intermediates if needed) and `server.key`. The certificate
+must cover `localhost` in its Subject Alternative Names. Never commit private keys.
+
+```bash
+make share-build
+make share-run SHARE_TLS_DIR=/absolute/path/to/test-certificates
+```
+
+HTTP remains available on port 8088; HTTPS is added on
+`https://localhost:8443/dav/` (`SHARE_HTTPS_PORT` overrides the port). The server
+still requires no authentication. `share-run` replaces the existing share
+container; its document folder remains mounted read-only.
+
+For a private test CA, first leave **Accept any certificate** disabled: the pod
+must reject an untrusted certificate. Enabling that option permits a diagnostic
+run without certificate verification. For verified TLS, restart the pod with
+`FRED_SAMPLES_WEBDAV_CA_FILE=/absolute/path/to/ca.crt make run` and leave the option
+disabled. This adds the CA for WebDAV without replacing trust for Fred's services.
+Successful TLS connectivity alone does not prove ingestion: confirm the run's
+document outcomes and completion of the ingestion tasks as well.
+
 Edit a file under the folder it serves, run `make sync` again, and watch it come
 back as `updated` while its neighbours stay `unchanged`; delete one and watch it
 come back as `removed`. `make share-stop` when you are finished.
@@ -118,8 +145,10 @@ make sync URL=https://share.example.com/documents/ INCLUDE='**/*.md,**/*.pdf'
 ```
 
 It runs the real synchronization against the real share and logs the documents
-it *would* write. The ledger is the real one, so a second run is genuinely
-incremental — `INSTANCE=other` gives a second share its own.
+it *would* write. With no library named there is nothing to read back, so every
+such run looks like a first one; name a `LIBRARY` and a second run is genuinely
+incremental — the library itself says what it already holds, once it has
+finished ingesting what the last run sent.
 
 A share needing a sign-in takes its password from the environment, never from
 the command line:
@@ -140,8 +169,17 @@ make sync URL=https://share.example.com/documents/ WEBDAV_USER=reader
 | `password` | none | Only with a user name. |
 | `include` | `**/*.md` | gitignore patterns, separated by commas or newlines. |
 | `exclude` | none | Same language. Exclusion always wins. |
+| `profile` | `medium` | Ingestion profile sent to the SDK: `fast`, `medium`, or `rich`. |
 | `max_files` | 2000 | A run carries at most this many; the rest waits. |
 | `trust_any_certificate` | off | See below. Prefer `$FRED_SAMPLES_WEBDAV_CA_FILE`. |
+
+For a local run, use `make sync URL=... LIBRARY=... PROFILE=rich`
+(or `make watch` with the same arguments). The CLI also accepts `--profile rich`.
+An omitted or cleared instance field uses `medium`. This sample needs the local
+SDK with the `publish(profile=...)` argument; that addition is not yet a published
+version requirement. Re-publish the KB declaration to expose the field in Fred.
+Changing the profile applies to subsequent writes; it does not re-ingest unchanged
+documents already present in the library.
 
 **Taking more than Markdown is `include`, not a code change.**
 `**/*.md,**/*.pdf,**/*.png` takes all three: content is carried as bytes from
@@ -188,6 +226,12 @@ public authorities and nothing else.
 ```bash
 export FRED_SAMPLES_WEBDAV_CA_FILE=/etc/ssl/private-ca/corporate-root.pem
 ```
+
+A run that hits this reports `certificate_not_trusted` and stops there without
+retrying — a trust store does not change between two attempts a second apart,
+and the message names the variable above. It also says whether the pod was
+given an authority at all, because "no root mounted" and "the mounted root does
+not certify this share" are different mistakes with different fixes.
 
 ### Why not `$SSL_CERT_FILE`
 
@@ -240,12 +284,16 @@ is one nobody remembers accepting.
 
 ## What a run does
 
-1. Walk the tree, one `PROPFIND` per folder, and ask each file for its entity
+1. Ask the library what it holds — documents ingested or still being ingested;
+   a failed one is absent, so the next run writes it again.
+2. Walk the tree, one `PROPFIND` per folder, and ask each file for its entity
    tag, date and size.
-2. Decide: what is new, what moved on, what the share no longer has.
-3. Fetch and write what changed, four at a time.
-4. Retract what the share dropped — **only if the walk was exhaustive**.
-5. Record the ledger.
+3. Decide: what is new, what moved on, what the share no longer has.
+4. Fetch and write what changed, four at a time, following each write until
+   its ingestion ends.
+5. Retract what the share dropped — **only if the walk was exhaustive**.
+
+Nothing is recorded at the end. Step 1 is the record.
 
 ### Five rules worth knowing
 
@@ -256,9 +304,10 @@ bounded in depth and in collections visited, because a folder symlinked back to
 itself is an ordinary misconfiguration and would otherwise never end.
 
 **An absence only means a deletion to a run that saw everything.** A walk cut
-short, a bound reached, a ledger that could not be read: each makes the run
-report `reconciliation_complete: false`, and such a run retracts nothing and
-forgets nothing. This is the rule that decides whether a team keeps its
+short or a bound reached makes the run report
+`reconciliation_complete: false`, and such a run retracts nothing. A run that
+could not read the library back reports `library_unreadable` and stops before
+the share is even walked. This is the rule that decides whether a team keeps its
 documents, and it is the one most heavily tested.
 
 **A skip never removes.** A file past the size bound, or with a path the
@@ -266,10 +315,10 @@ platform will not take, is reported and left exactly as it is. The library
 loses a document because the share dropped it, never because this
 implementation could not carry it.
 
-**A document that could not be written keeps the version the library still
-holds.** Forgetting it looks harmless — the next run republishes it. But if the
-file then disappears from the share, no run has a record of it again and the
-document is orphaned for ever.
+**A document that could not be written leaves the library exactly as it was.**
+The library still lists the version it holds, which is both what makes the next
+run write it again and what keeps it eligible for removal if the share drops
+the file in the meantime.
 
 **The href decides the key, so the href is checked — and both sides are
 compared decoded.** A `PROPFIND` answer naming a path outside the folder that
@@ -310,13 +359,73 @@ addresses a document by the key its source chose — using the SDK's own
 store credential. A Knowledge Base never writes to OpenSearch or object storage
 directly. The seam is [`document_boundary.py`](fred_samples_webdav_kb/document_boundary.py).
 
-Set no `FRED_KNOWLEDGE_FLOW_URL` and the run logs what it would write instead,
-which is what makes `make sync` work against a real share with no Fred.
+The same surface reads back. A write is answered with 202 and a task, which
+the boundary follows with the publisher's `wait` until it is terminal: a
+document counts as written only once it has landed, and an ingestion that
+fails is this run's `write_failed`. The library's listing — documents ingested
+or still being ingested — is what the next run reconciles against: a document
+whose ingestion failed is absent from it and is written again, with no state
+kept here to notice.
+
+Leave `knowledge_base.knowledge_flow_url` out of `configuration.yaml` and the
+run logs what it would write instead, which is what makes `make sync` work
+against a real share with no Fred.
 
 One consequence worth stating: **a Knowledge Base cannot name itself in a
 document's provenance.** The source tag a write is attributed to is resolved
 against Knowledge Flow's own deployment configuration, so every synchronized
 document is recorded under the same tag a person's upload uses.
+
+---
+
+## Deploy it
+
+The pod ships as an image built from
+[`dockerfiles/Dockerfile.knowledge-base`](../../dockerfiles/Dockerfile.knowledge-base),
+shared by the three Knowledge Base samples.
+
+```bash
+make docker-build                      # build it
+make docker-sync URL=https://share.example.com/documents/   # dry-run a share from inside it
+make docker-push                       # push to ghcr.io (docker login first)
+```
+
+CI builds and pushes the same image on the default branch and on a `v*` tag —
+`.github/workflows/Build-and-push-docker.yml`. It resolves `fred-sdk` from PyPI
+rather than from a sibling monorepo checkout, so a plain clone of this
+repository is all a runner needs.
+
+The image runs as uid 1000, opens **no port**, and offers the SDK's two
+commands. A deployment runs `publish` once, then `run`:
+
+```bash
+docker run --rm <image> publish   # declare this Knowledge Base to Fred
+docker run --rm <image>           # `run` is the default: serve dispatched runs
+```
+
+Two things a Deployment has to get right:
+
+| What | Why |
+|---|---|
+| Mount a ConfigMap over `/app/config/configuration.yaml` | `$CONFIG_FILE` resolves there from the working directory. The shipped file points at `localhost` and is a shape to copy, not a deployment. |
+| Check `$FRED_SAMPLES_WEBDAV_CA_FILE` | It defaults to the image's own bundle, `/etc/ssl/certs/ca-certificates.crt`, so a root the cluster injects into the container's system store is trusted with no further configuration. Point it at a mounted PEM instead when the root comes from a ConfigMap, per the section above. |
+
+To find out which of those a share needs before deploying anything, run the
+sample's developer tool inside the image — it uses the pod's trust store, not a
+laptop's, which is the whole question:
+
+```bash
+docker run --rm --entrypoint fred-samples-webdav-kb-dev <image> \
+  sync --url https://share.example.com/documents/
+```
+
+Nothing is written to Fred without `--library`, so that is a safe first probe
+against a share nobody has tried yet.
+
+**The image is about 1.4 GB**, and almost none of that is this sample: `fred-core`
+declares 31 runtime dependencies, among them pandas, pyarrow, google-cloud-storage
+and a client for every LLM provider. A Knowledge Base pod loads none of them. The
+figure belongs to the SDK's packaging, not to anything that can be fixed here.
 
 ---
 

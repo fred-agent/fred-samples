@@ -22,9 +22,9 @@ carry must be left exactly as it is.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from fred_samples_webdav_kb.ledger import Ledger
 from fred_samples_webdav_kb.settings import Selection
 from fred_samples_webdav_kb.source import Inventory, RemoteFile
 
@@ -81,21 +81,23 @@ class Plan:
     exhaustive: bool = False
     selected: int = 0
     versionless: int = 0
-    # Paths the bound left out of this run. Carried so their ledger entries
-    # survive: a file this run never looked at has not been deleted.
+    # Paths the bound left out of this run. Named so a run can say so: a file
+    # this run never looked at has not been deleted.
     deferred: tuple[str, ...] = field(default=())
 
 
 def plan_run(
     inventory: Inventory,
     *,
-    previous: Ledger,
+    previous: Mapping[str, str | None],
     selection: Selection,
     max_files: int | None,
     max_file_bytes: int,
 ) -> Plan:
     """Decide this run's writes, removals and skips.
 
+    `previous` is what the library itself says it holds, so a document that
+    never finished being ingested is absent from it and is written again here.
     Removals are issued only by a run that saw the whole share. A bounded walk
     proves nothing about what it did not reach, and deducing a deletion from an
     absence it never observed is how a synchronizer quietly empties a library.

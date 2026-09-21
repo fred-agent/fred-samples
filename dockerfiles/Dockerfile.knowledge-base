@@ -1,0 +1,142 @@
+# A Knowledge Base pod, as a deployable image.
+#
+# One Dockerfile for the three samples under knowledge-bases/. They differ by
+# folder name and package name and by nothing else, so those are build
+# arguments rather than three near-identical files drifting apart. The package
+# name is passed rather than derived: `git-repository` holds `fred_samples_git_kb`.
+#
+# The build context is the repository root:
+#
+#     make docker-build                       # from knowledge-bases/webdav
+#     docker build -f dockerfiles/Dockerfile.knowledge-base \
+#       --build-arg KB=webdav --build-arg KB_PACKAGE=fred_samples_webdav_kb .
+#
+# A Knowledge Base pod opens no inbound port — it publishes a declaration to
+# Fred and then serves dispatched runs — so there is deliberately no EXPOSE
+# and no HTTP health check here. Liveness is the process being up.
+
+ARG PYTHON_IMAGE=mirror.gcr.io/python:3.12.8-slim
+
+# ─── build ────────────────────────────────────────────────────────────────────
+FROM ${PYTHON_IMAGE} AS builder
+
+ARG KB=webdav
+ARG UV_VERSION=0.7.21
+
+ENV UV_PROJECT_ENVIRONMENT=/app/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/venv/bin:$PATH"
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# Pinned, so the resolver that built an image last month is the one that builds
+# it today.
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh \
+ && mv /root/.local/bin/uv /usr/local/bin/uv \
+ && chmod +x /usr/local/bin/uv
+
+WORKDIR /src
+
+# The manifest alone first: editing the sample's code then costs a rebuild of
+# the last layer rather than a re-resolution of every dependency.
+COPY knowledge-bases/${KB}/pyproject.toml ./
+
+# `--no-sources`, and therefore no `--frozen`: [tool.uv.sources] resolves
+# fred-sdk from a sibling monorepo checkout which is deliberately not in this
+# build context, and uv.lock records that path. The image takes fred-sdk from
+# PyPI instead, bounded by the floor in pyproject.toml — the same resolution
+# `make dev-pypi` checks, and the one an outside consumer of this repository
+# gets. That floor is what pins this image; there is no second lock file
+# claiming a reproducibility this build does not have.
+RUN uv sync --no-sources --no-dev --no-install-project
+
+COPY knowledge-bases/${KB}/ ./
+
+# `--no-editable`, which is the whole difference between an image that runs and
+# one that does not: uv installs a project in editable mode by default, and an
+# editable install is a link back to the source tree it was built from. That
+# tree is /src here and does not exist in the runtime stage, so the pod would
+# start and fail on `No module named ...`. Installed for real, the package
+# lives in the venv and the source tree stops mattering.
+RUN uv sync --no-sources --no-dev --no-editable
+
+# ─── runtime ──────────────────────────────────────────────────────────────────
+FROM ${PYTHON_IMAGE}
+
+ARG KB=webdav
+ARG KB_PACKAGE=fred_samples_webdav_kb
+ARG USER_NAME=fred-user
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+
+# Where this pod keeps one ledger per Knowledge Base instance — what the last
+# run published. A fixed path rather than the XDG default, so a Deployment has
+# somewhere predictable to mount a volume. It survives a restart only if one is
+# mounted; without it a restarted pod republishes everything, which is correct
+# and expensive.
+ARG STATE_DIR=/var/lib/fred-samples-kb
+
+LABEL org.opencontainers.image.source="https://github.com/fred-agent/fred-samples" \
+      org.opencontainers.image.description="Fred sample Knowledge Base pod" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# ca-certificates is what makes the corporate root a cluster injects into the
+# system store land somewhere this pod can be pointed at. curl is not installed:
+# the same question is answered from inside the pod by the sample's own
+# developer tool, which uses the pod's trust store rather than a second one.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g ${GROUP_ID} ${USER_NAME} \
+ && useradd -u ${USER_ID} -g ${GROUP_ID} -m ${USER_NAME} \
+ && mkdir -p ${STATE_DIR} \
+ && chown -R ${USER_ID}:${GROUP_ID} ${STATE_DIR}
+
+COPY --from=builder --chown=${USER_ID}:${GROUP_ID} /app/venv /app/venv
+
+# The sample's own configuration, and nothing else from the source tree: the
+# package itself is in the venv. `config/configuration.yaml` is the path
+# $CONFIG_FILE resolves to by default from this working directory, so the image
+# runs as shipped and a deployment mounts a ConfigMap over it. The secrets file
+# beside it is excluded by .dockerignore and never reaches a registry.
+COPY --chown=${USER_ID}:${GROUP_ID} knowledge-bases/${KB}/config /app/config
+
+WORKDIR /app
+
+# The three samples name their state variable differently — the WebDAV and
+# local-folder ledgers, and the git sample's bare mirror. All three are set to
+# the same directory so one mounted volume serves whichever pod this image was
+# built for, and each sample reads only its own.
+ENV PATH="/app/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    HOME=/home/${USER_NAME} \
+    FRED_SAMPLES_WEBDAV_STATE_DIR=${STATE_DIR} \
+    FRED_SAMPLES_KB_STATE_DIR=${STATE_DIR} \
+    FRED_SAMPLES_GIT_MIRROR_DIR=${STATE_DIR}
+
+# Read by the WebDAV sample only; the other two ignore it.
+#
+# Python reads no system trust store, so a share signed by a corporate
+# authority fails in this pod while curl against the same URL works. Defaulting
+# to the image's own bundle makes the pod trust what the container trusts —
+# including a root the cluster injected — and the sample ADDS this file to the
+# public authorities rather than replacing them. Override it with the path of a
+# mounted PEM when the root comes from a ConfigMap instead, or set it empty to
+# trust public authorities only.
+ENV FRED_SAMPLES_WEBDAV_CA_FILE=/etc/ssl/certs/ca-certificates.crt
+
+# `python -m <package>` spelled once, so `docker run <image> publish` and the
+# `run` default below are the two commands the SDK actually offers. exec, so
+# the pod receives the SIGTERM Kubernetes sends it.
+RUN printf '#!/bin/sh\nexec python -m %s "$@"\n' "${KB_PACKAGE}" \
+      > /usr/local/bin/knowledge-base \
+ && chmod +x /usr/local/bin/knowledge-base
+
+USER ${USER_NAME}
+
+ENTRYPOINT ["knowledge-base"]
+CMD ["run"]

@@ -180,6 +180,15 @@ A test must never pick up the configuration a developer happens to have: `./conf
 is the default a pod resolves, so every sample's `tests/conftest.py` points `$CONFIG_FILE` and
 `$ENV_FILE` at nonexistent paths. Keep that fixture when adding a suite.
 
+**A pod's ledger never lives in this repository.** A sample that remembers what it already published
+keeps one small JSON file per instance, and it belongs outside the working tree — the default already
+is (`${XDG_STATE_HOME:-~/.local/state}/<package>/`), which is why nothing about it appears in
+`.gitignore` and nothing should. The per-sample `FRED_SAMPLES_*_STATE_DIR` variable moves it, to a
+volume on a deployed pod and never to a path inside this checkout: it is per-machine, per-instance
+state, and a ledger committed by accident makes the next run believe a library already holds
+documents it does not. The full rule, with the reasoning, is in
+[`knowledge-bases/README.md`](knowledge-bases/README.md).
+
 ---
 
 ## Two configuration profiles — `agents/` only

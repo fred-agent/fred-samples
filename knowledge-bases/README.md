@@ -17,6 +17,31 @@ Each is a standalone package with its own venv. Start with `local-folder`.
 
 ---
 
+## A pod's ledger never lives in this repository
+
+A sample that remembers what it already published keeps a **ledger**: one small
+JSON file per Knowledge Base instance, holding each document's path and the
+version the last run accepted. It is a cache, never a source of truth — delete
+it and the next run republishes everything, which costs one expensive run and
+nothing else.
+
+**It belongs outside the working tree, always.** The default is already outside
+it, and nothing needs adding to `.gitignore`:
+
+    ${XDG_STATE_HOME:-~/.local/state}/<package>/<instance>.json
+
+One environment variable moves it, per sample — `FRED_SAMPLES_KB_STATE_DIR`
+for `local-folder`, `FRED_SAMPLES_WEBDAV_STATE_DIR` for `webdav`. Point it at a
+volume on a deployed pod. **Never point it at a path inside this repository:**
+it is per-machine, per-instance state, it means nothing on anyone else's
+checkout, and a ledger committed by accident makes the next run believe the
+library already holds documents it does not.
+
+`git-repository` has no such variable because it keeps nothing at all: Git
+answers "what changed since this revision" on its own.
+
+---
+
 ## Every sample works the same way
 
 Run these from the sample's own directory.

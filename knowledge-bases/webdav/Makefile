@@ -39,8 +39,9 @@ $(TARGET)/.uv-installed: $(TARGET)/.venv-created
 
 # pyproject.toml's [tool.uv.sources] points fred-sdk at ../../../fred/libs
 # (local monorepo checkout, sibling to this repo) by default, exactly as the
-# local-folder sample does: the Knowledge Base authoring surface is not on PyPI
-# yet, so `make dev-pypi` cannot work for this sample until it is.
+# local-folder sample does — so a change to the SDK is tried here before it is
+# released. `make dev-pypi` resolves the published SDK instead, which is what
+# the deployable image and an outside consumer of this repository get.
 $(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
 	VIRTUAL_ENV= $(UV_RUN) sync --extra dev
 	@touch $@
@@ -94,6 +95,8 @@ SHARE_DOCKERFILE     ?= ../../dockerfiles/Dockerfile.webdav-share
 SHARE_CONTEXT        ?= ../..
 SHARE_NETWORK        ?= fred-shared-network
 SHARE_HOST_PORT      ?= 8088
+SHARE_HTTPS_PORT     ?= 8443
+SHARE_TLS_DIR        ?=
 SHARE_DIR            ?= $(CURDIR)/local-webdav/documents
 SHARE_URL            ?= http://localhost:$(SHARE_HOST_PORT)/dav/
 
@@ -107,6 +110,10 @@ share-build: ## Build the WebDAV share image
 .PHONY: share-run
 share-run: ## Serve a folder over WebDAV: make share-run [SHARE_DIR=/path/to/documents]
 	@test -d "$(SHARE_DIR)" || { echo "No such folder: $(SHARE_DIR)"; exit 1; }
+	@if [ -n "$(SHARE_TLS_DIR)" ]; then \
+		test -f "$(SHARE_TLS_DIR)/server.crt" && test -f "$(SHARE_TLS_DIR)/server.key" \
+		|| { echo "SHARE_TLS_DIR must contain server.crt and server.key"; exit 1; }; \
+	fi
 	@docker image inspect $(SHARE_IMAGE) >/dev/null 2>&1 || $(MAKE) --no-print-directory share-build
 	-@docker rm -f $(SHARE_CONTAINER_NAME) >/dev/null 2>&1 || true
 	@docker network inspect $(SHARE_NETWORK) >/dev/null 2>&1 \
@@ -116,10 +123,12 @@ share-run: ## Serve a folder over WebDAV: make share-run [SHARE_DIR=/path/to/doc
 		--network $(SHARE_NETWORK) \
 		-p $(SHARE_HOST_PORT):80 \
 		-v "$(SHARE_DIR)":/srv/share:ro \
-		$(SHARE_IMAGE)
+		$(if $(SHARE_TLS_DIR),-p $(SHARE_HTTPS_PORT):443 -v "$(abspath $(SHARE_TLS_DIR))":/run/webdav-tls:ro,) \
+		$(SHARE_IMAGE) $(if $(SHARE_TLS_DIR),httpd-foreground -D WEBDAV_TLS,)
 	@echo ""
 	@echo "Serving $(SHARE_DIR)"
 	@echo "  from the host      : $(SHARE_URL)"
+	@if [ -n "$(SHARE_TLS_DIR)" ]; then echo "  HTTPS              : https://localhost:$(SHARE_HTTPS_PORT)/dav/"; fi
 	@echo "  from a container   : http://$(SHARE_CONTAINER_NAME)/dav/"
 	@echo ""
 	@echo "  make sync URL=$(SHARE_URL)"
@@ -136,6 +145,87 @@ share-logs: ## Follow the share's access log
 share-clean: ## Remove the share's container and image
 	-@docker rm -f $(SHARE_CONTAINER_NAME) 2>/dev/null || true
 	-@docker rmi $(SHARE_IMAGE) 2>/dev/null || true
+
+# ── The deployable image ───────────────────────────────────────────────────────
+# Same shape as agents/Makefile, pointed at the shared Knowledge Base
+# Dockerfile. The context is the repository root because the Dockerfile copies
+# knowledge-bases/$(KB)/, so these are run from here and reach two levels up.
+#
+# The image resolves fred-sdk from PyPI (`--no-sources` in the Dockerfile), so
+# it builds from a standalone checkout of this repository with no sibling
+# monorepo — which is what a CI runner has.
+
+KB                    ?= webdav
+KB_PACKAGE            ?= fred_samples_webdav_kb
+DOCKER_REGISTRY       ?= ghcr.io/fred-agent/fred-samples
+DOCKER_IMAGE_NAME     ?= $(DOCKER_REGISTRY)/fred-samples-webdav-kb
+DOCKER_IMAGE_TAG      ?= latest
+DOCKER_IMAGE          ?= $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)
+DOCKER_CONTAINER_NAME ?= fred-samples-webdav-kb
+DOCKERFILE_PATH       ?= ../../dockerfiles/Dockerfile.knowledge-base
+DOCKER_CONTEXT        ?= ../..
+DOCKER_NETWORK        ?= fred-shared-network
+DOCKER_USER_NAME      ?= fred-user
+# Fixed, unlike the agents pod's: an image pushed to a registry must not carry
+# whichever uid the developer who built it happens to have.
+DOCKER_USER_ID        ?= 1000
+DOCKER_GROUP_ID       ?= 1000
+CONFIG_DIR            ?= $(CURDIR)/config
+CONTAINER_CONFIG_DIR  ?= /app/config
+
+.PHONY: docker-build
+docker-build: ## Build the deployable image for this Knowledge Base pod
+	docker build \
+		-f $(DOCKERFILE_PATH) \
+		--build-arg KB=$(KB) \
+		--build-arg KB_PACKAGE=$(KB_PACKAGE) \
+		--build-arg USER_NAME=$(DOCKER_USER_NAME) \
+		--build-arg USER_ID=$(DOCKER_USER_ID) \
+		--build-arg GROUP_ID=$(DOCKER_GROUP_ID) \
+		-t $(DOCKER_IMAGE) \
+		$(DOCKER_CONTEXT)
+
+.PHONY: docker-push
+docker-push: ## Push the image (docker login ghcr.io first)
+	docker push $(DOCKER_IMAGE)
+
+.PHONY: docker-publish
+docker-publish: ## Declare this Knowledge Base to Fred, from the image
+	docker run --rm \
+		--network $(DOCKER_NETWORK) \
+		--add-host=host.docker.internal:host-gateway \
+		-v $(realpath $(CONFIG_DIR)):$(CONTAINER_CONFIG_DIR):ro \
+		-e ENV_FILE=$(CONTAINER_CONFIG_DIR)/.env \
+		$(DOCKER_IMAGE) publish
+
+.PHONY: docker-run
+docker-run: ## Serve runs from the image, joined to fred-shared-network
+	docker run --rm \
+		--name $(DOCKER_CONTAINER_NAME) \
+		--network $(DOCKER_NETWORK) \
+		--add-host=host.docker.internal:host-gateway \
+		-v $(realpath $(CONFIG_DIR)):$(CONTAINER_CONFIG_DIR):ro \
+		-e ENV_FILE=$(CONTAINER_CONFIG_DIR)/.env \
+		$(DOCKER_IMAGE)
+
+.PHONY: docker-sync
+docker-sync: ## Dry-run a share from inside the image: make docker-sync URL=https://host/folder/
+	@if [ -z "$(URL)" ]; then \
+		echo "Provide a share: make docker-sync URL=https://host/folder/"; \
+		exit 1; \
+	fi
+	docker run --rm \
+		--entrypoint fred-samples-webdav-kb-dev \
+		$(DOCKER_IMAGE) sync --url '$(URL)'
+
+.PHONY: docker-stop
+docker-stop: ## Stop the running container by name
+	-@docker stop $(DOCKER_CONTAINER_NAME) 2>/dev/null || true
+
+.PHONY: docker-clean
+docker-clean: ## Remove this container and image only
+	-@docker rm -f $(DOCKER_CONTAINER_NAME) 2>/dev/null || true
+	-@docker rmi $(DOCKER_IMAGE) 2>/dev/null || true
 
 # ── Offline developer tool ─────────────────────────────────────────────────────
 
@@ -169,7 +259,7 @@ SYNC_FLAGS = --url '$(URL)' \
 	$(if $(INCLUDE),--include '$(INCLUDE)',) \
 	$(if $(EXCLUDE),--exclude '$(EXCLUDE)',) \
 	$(if $(MAX_FILES),--max-files $(MAX_FILES),) \
-	$(if $(INSTANCE),--instance '$(INSTANCE)',) \
+	$(if $(PROFILE),--profile '$(PROFILE)',) \
 	$(if $(TRUST_ANY_CERTIFICATE),--trust-any-certificate,) \
 	$(if $(LIBRARY),--library '$(LIBRARY)',)
 

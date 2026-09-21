@@ -46,3 +46,9 @@ def test_a_password_is_read_from_the_environment_never_from_the_command_line(
     # which is enough to prove where the password was looked for.
     assert main(["sync", "--url", "https://share.example.com/dav/"]) == 2
     assert "username_missing" in capsys.readouterr().out
+
+
+def test_an_invalid_profile_is_rejected_by_the_cli():
+    with pytest.raises(SystemExit) as error:
+        main(["sync", "--url", "https://share.example.com/dav/", "--profile", "turbo"])
+    assert error.value.code == 2

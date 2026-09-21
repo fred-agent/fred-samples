@@ -1,6 +1,32 @@
-# Docker Guide for `fred-samples` Agents
+# Docker Guide for `fred-samples`
 
-This guide explains how to build, run, and push the agents image.
+Three images live here, and they are not the same kind of thing:
+
+| Dockerfile | What it is | Built from |
+|---|---|---|
+| `Dockerfile` | the agents pod | `agents/` — `make docker-build` |
+| `Dockerfile.knowledge-base` | a Knowledge Base pod | `knowledge-bases/<sample>/` — `make docker-build` |
+| `Dockerfile.webdav-share` | a test fixture, not a deployable | `knowledge-bases/webdav/` — `make share-build` |
+
+Everything below is the **agents** image. For a Knowledge Base pod — how it is
+configured, why it opens no port, where its ledger volume goes and how it is
+given a private certificate authority — see
+[`knowledge-bases/webdav/README.md`](../knowledge-bases/webdav/README.md).
+
+One Dockerfile serves the three Knowledge Base samples: they differ by folder
+and package name, passed as `--build-arg KB=` and `--build-arg KB_PACKAGE=`,
+and by nothing else. The package name is passed rather than derived from the
+folder, because `git-repository` holds `fred_samples_git_kb`.
+
+Unlike the agents image, a Knowledge Base image resolves `fred-sdk` from PyPI
+(`uv sync --no-sources`), so it builds from a standalone clone with no sibling
+monorepo checkout — which is what CI has, and what makes it publishable.
+
+---
+
+## The agents image
+
+This section explains how to build, run, and push the agents image.
 
 ## Prerequisites
 

@@ -57,6 +57,7 @@ def test_every_declared_field_is_one_the_run_actually_reads():
     filled["include"] = "**/*.pdf"
     filled["exclude"] = "drafts/**"
     filled["max_files"] = 10
+    filled["profile"] = "rich"
     filled["trust_any_certificate"] = True
 
     settings = read_settings(filled)
@@ -64,6 +65,7 @@ def test_every_declared_field_is_one_the_run_actually_reads():
     assert settings.where.url == "https://share.example.com/documents/"
     assert settings.username == "reader"
     assert settings.max_files == 10
+    assert settings.profile == "rich"
     assert settings.trust_any_certificate is True
     assert settings.selection.selects("a.pdf")
     assert not settings.selection.selects("drafts/a.pdf")
@@ -140,3 +142,10 @@ def test_a_configuration_that_cannot_be_read_never_reaches_a_share():
     assert result.outcome is KnowledgeBaseRunOutcome.failed
     assert result.reconciliation_complete is False
     assert [issue.code for issue in result.errors] == ["url_invalid"]
+
+
+def test_the_profile_field_declares_the_supported_choices_and_default():
+    field = next(item for item in kb.configuration_fields if item.key == "profile")
+    assert field.type == "select"
+    assert field.enum == ["fast", "medium", "rich"]
+    assert field.default == "medium"

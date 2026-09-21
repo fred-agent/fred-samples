@@ -11,5 +11,11 @@
   // basedpyright's static resolver can't follow — same fix as the sibling
   // samples (extraPaths pointing straight at the source). Only used for
   // type-checking; the venv resolution above is what actually runs.
-  "extraPaths": ["../../../fred/libs/fred-sdk", "../../../fred/libs/fred-core"]
+  // TEMPORARY E2E OVERRIDE — pointed at the feature worktree, as [tool.uv.sources]
+  // in pyproject.toml is; revert both together to ../../../fred/libs/*.
+  "extraPaths": [
+    "../../../features/webdav/libs/fred-sdk",
+    "../../../features/webdav/libs/fred-pod",
+    "../../../features/webdav/libs/fred-core"
+  ]
 }

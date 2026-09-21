@@ -12,38 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-One synchronization run, from the ledger the last one left to the one this
-leaves behind.
+One synchronization run, from what the library already holds to what the share
+now shows.
 
-The order is the whole design: walk, decide, write, remove, record. Nothing is
-written before the plan is complete, nothing is removed before the writes are
-done, and nothing is recorded about a document whose write did not happen.
+The order is the whole design: ask the library, walk the share, decide, write,
+remove. Nothing is written before the plan is complete, and nothing is removed
+before the writes are done. Nothing is recorded anywhere — the library is asked
+again next time, so a document that did not make it is simply offered again.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
+from collections.abc import Mapping
 
 from fred_samples_webdav_kb.document_boundary import Boundary
-from fred_samples_webdav_kb.ledger import (
-    Ledger,
-    LedgerError,
-    load_ledger,
-    save_ledger,
-)
 from fred_samples_webdav_kb.plan import Plan, Write, plan_run
 from fred_samples_webdav_kb.report import RunReport
 from fred_samples_webdav_kb.settings import Settings
 from fred_samples_webdav_kb.source import DocumentSource, SourceUnavailable
-from fred_samples_webdav_kb.webdav import FileTooLarge
+from fred_samples_webdav_kb.webdav import CertificateNotTrusted, FileTooLarge
 
 logger = logging.getLogger(__name__)
 
-# Every document costs a fetch from the share and a write that converts and
-# indexes it. Four at a time hides both latencies without turning one team's
-# run into a load test of someone else's web server.
+# Every document costs a fetch from the share and a write that hands it over
+# and waits for Fred to ingest it. Four at a time hides both latencies without
+# turning one team's run into a load test of someone else's web server.
 DEFAULT_CONCURRENCY = 4
 
 # A run where everything fails should say so after a few documents rather than
@@ -56,27 +51,27 @@ async def synchronize(
     settings: Settings,
     source: DocumentSource,
     boundary: Boundary,
-    ledger_path: Path,
     concurrency: int = DEFAULT_CONCURRENCY,
 ) -> RunReport:
     """Bring the library to what the share now holds, and say what happened."""
     report = RunReport()
 
-    remembered = True
     try:
-        previous = load_ledger(ledger_path)
-    except LedgerError as error:
-        # Not fatal: everything is republished, which is correct because a
-        # document is addressed by its path on both sides. But this run has no
-        # record of what the library holds, so documents the share dropped
-        # while the ledger was unreadable can no longer be found — which is
-        # exactly what `reconciliation_complete` is for.
-        report.warn("ledger_unreadable", str(error))
-        previous = {}
-        remembered = False
+        previous = await boundary.documents()
+    except Exception as error:  # noqa: BLE001 - a result is owed, not a raise
+        # A run that does not know what the library holds can decide nothing
+        # about it, least of all that a document should be taken out of it.
+        report.fail("library_unreadable", str(error))
+        return report
 
     try:
         inventory = await source.inventory()
+    except CertificateNotTrusted as error:
+        # Its own code, beside `ca_file_unreadable`: both are a deployment the
+        # operator has to change, not a share to wait out, and reading them as
+        # "the share is down" is how a week goes by before anyone mounts a root.
+        report.fail("certificate_not_trusted", str(error))
+        return report
     except SourceUnavailable as error:
         # A run that never read the share proves nothing about the library.
         report.fail("source_unavailable", str(error))
@@ -89,12 +84,12 @@ async def synchronize(
         max_files=settings.max_files,
         max_file_bytes=settings.max_file_bytes,
     )
-    report.exhaustive = plan.exhaustive and remembered
+    report.exhaustive = plan.exhaustive
     report.discovered = plan.selected
     report.unchanged = len(plan.unchanged)
     _report_plan(plan, settings, report)
 
-    current = await _apply(
+    await _apply(
         plan,
         previous=previous,
         source=source,
@@ -102,14 +97,6 @@ async def synchronize(
         report=report,
         limit=concurrency,
     )
-
-    try:
-        save_ledger(ledger_path, current)
-    except OSError as error:
-        # The documents went out, but the next run cannot know it and will
-        # republish all of them. Idempotent, expensive, and worth reporting as
-        # the failure it is.
-        report.fail("ledger_not_saved", str(error))
 
     logger.info("[WEBDAV KB] %s: %s", settings.where.url, report.summary())
     return report
@@ -149,21 +136,20 @@ def _report_plan(plan: Plan, settings: Settings, report: RunReport) -> None:
 async def _apply(
     plan: Plan,
     *,
-    previous: Ledger,
+    previous: Mapping[str, str | None],
     source: DocumentSource,
     boundary: Boundary,
     report: RunReport,
     limit: int,
-) -> Ledger:
-    """Write, then remove, and return what the next run should believe.
+) -> None:
+    """Write, then remove, and record nothing.
 
-    A path is recorded with its new version only once that version is actually
-    in the library. Everything else keeps the version the library already held,
-    which is both what makes the next run retry it and what keeps it eligible
-    for removal if the share drops it in the meantime.
+    What the library holds is only ever known by asking it, so everything this
+    run intended but did not carry out — a skip, a failed read, a write that
+    did not land, a document abandoned past the budget — is left exactly as it
+    was, still listed, still eligible for removal if the share drops it, and
+    offered again by the next run.
     """
-    current: Ledger = {path: previous[path] for path in plan.unchanged}
-    recorded = asyncio.Lock()
     permits = asyncio.Semaphore(limit)
     abandoned = 0
 
@@ -180,7 +166,7 @@ async def _apply(
                 content = await source.read(write.file)
             except FileTooLarge as error:
                 # The share's own listing understated it. Still a skip, never a
-                # removal, and the entry it may already have is kept below.
+                # removal.
                 report.skip(write.source_key, "too_large", str(error))
                 return
             except Exception as error:  # noqa: BLE001 - one document's failure
@@ -195,8 +181,6 @@ async def _apply(
             except Exception as error:  # noqa: BLE001 - one document's failure
                 report.fail("write_failed", str(error), subject=write.source_key)
                 return
-            async with recorded:
-                current[write.source_key] = write.version
             report.wrote(
                 created=write.source_key not in previous, size_bytes=len(content)
             )
@@ -206,35 +190,15 @@ async def _apply(
     for removal in plan.removals:
         if len(report.errors) >= FAILURE_BUDGET:
             abandoned += 1
-            current[removal.source_key] = previous[removal.source_key]
             continue
         try:
             await boundary.retract(relative_path=removal.source_key)
         except Exception as error:  # noqa: BLE001 - one document's failure
-            # Kept: the document is still in the library, and a run that forgot
-            # it would never try to take it out again.
-            current[removal.source_key] = previous[removal.source_key]
+            # The document is still in the library, so the next run finds it
+            # listed, finds the share still without it, and tries again.
             report.fail("remove_failed", str(error), subject=removal.source_key)
             continue
         report.removed += 1
-
-    # Anything this run intended but did not carry out keeps whatever the
-    # library already holds for it — a skip, a failed read, a failed write, a
-    # document abandoned past the budget. Dropping the entry instead would look
-    # harmless, and then the run after next would find the file gone from the
-    # share, have no record of it, and leave the document orphaned for ever.
-    for path in (
-        *(skip.source_key for skip in plan.skips),
-        *(w.source_key for w in plan.writes),
-    ):
-        if path not in current and path in previous:
-            current[path] = previous[path]
-    if not plan.exhaustive:
-        # Nothing this run did not observe may be forgotten: dropping an entry
-        # here is what would make the *next* exhaustive run retract a document
-        # that was never missing.
-        for path, version in previous.items():
-            current.setdefault(path, version)
 
     if abandoned:
         # Otherwise the report reads as a pass that considered everything and
@@ -243,4 +207,3 @@ async def _apply(
             "stopped_early",
             f"{abandoned} documents were not attempted after {FAILURE_BUDGET} failures",
         )
-    return current

@@ -34,11 +34,12 @@ from fred_sdk.knowledge_base import (
 )
 
 from fred_samples_webdav_kb.document_boundary import open_boundary
-from fred_samples_webdav_kb.ledger import ledger_path_for
 from fred_samples_webdav_kb.report import Issue, RunReport
 from fred_samples_webdav_kb.settings import (
     DEFAULT_INCLUDE,
     DEFAULT_MAX_FILES,
+    DEFAULT_PROFILE,
+    INGESTION_PROFILES,
     ConfigurationError,
     read_settings,
 )
@@ -97,6 +98,14 @@ kb = KnowledgeBase(
             description="Which of those to leave out. Same way of writing them.",
         ),
         FieldSpec(
+            key="profile",
+            type="select",
+            title="Ingestion profile",
+            description="Processing profile sent to Fred for each document written.",
+            default=DEFAULT_PROFILE,
+            enum=list(INGESTION_PROFILES),
+        ),
+        FieldSpec(
             key="max_files",
             type="integer",
             title="Maximum documents",
@@ -145,13 +154,12 @@ async def synchronize(context: KnowledgeBaseRunContext) -> KnowledgeBaseSyncResu
         verify=verify,
         max_file_bytes=settings.max_file_bytes,
     )
-    boundary = open_boundary(library_id=context.library_id)
+    boundary = open_boundary(library_id=context.library_id, profile=settings.profile)
     try:
         report = await reconcile(
             settings=settings,
             source=source,
             boundary=boundary,
-            ledger_path=ledger_path_for(context.instance_id),
         )
     finally:
         await boundary.aclose()
@@ -166,8 +174,7 @@ def _result(report: RunReport) -> KnowledgeBaseSyncResult:
 
     The one place the two vocabularies meet. `reconciliation_complete` is the
     field that matters: it is what tells Fred this run saw the whole share, and
-    it is false for every pass that was bounded, cut short, or run without a
-    readable ledger.
+    it is false for every pass that was bounded or cut short.
     """
     return KnowledgeBaseSyncResult(
         outcome=(

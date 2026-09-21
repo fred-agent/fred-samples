@@ -2,7 +2,7 @@
 #
 # Apache mod_dav + mod_dav_fs — the same pair a production share runs, rather
 # than a stand-in that would agree with whatever the Knowledge Base happens to
-# do. It is a test fixture, not a deployable: no authentication, no TLS.
+# do. It is a test fixture, not a deployable: no authentication, optional TLS.
 #
 # The folder it serves is mounted at /srv/share, so one image serves whichever
 # folder `make share-run SHARE_DIR=...` points at.
@@ -19,6 +19,7 @@ FROM httpd:2.4
 ARG USER_NAME=daemon
 
 COPY knowledge-bases/webdav/local-webdav/httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY knowledge-bases/webdav/local-webdav/webdav-tls.conf /usr/local/apache2/conf/webdav-tls.conf
 
 # mod_dav insists on somewhere to keep locks even when nothing ever takes one,
 # and the directory has to exist before the first request rather than at the
@@ -26,6 +27,6 @@ COPY knowledge-bases/webdav/local-webdav/httpd.conf /usr/local/apache2/conf/http
 RUN mkdir -p /var/lock/apache2 /srv/share \
     && chown -R ${USER_NAME} /var/lock/apache2
 
-EXPOSE 80
+EXPOSE 80 443
 
 CMD ["httpd-foreground"]

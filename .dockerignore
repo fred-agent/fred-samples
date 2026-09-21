@@ -13,4 +13,11 @@ servers/
 **/*.pyd
 **/*.egg-info
 
-agents/config/.env
+# Every pod's secrets file, not just the agents'. A Knowledge Base image is
+# published to a registry, and its config/ directory is copied in whole.
+**/config/.env
+
+# Per-machine ledgers and coverage output, which a build has no use for.
+**/htmlcov
+**/.coverage
+**/local-webdav/documents

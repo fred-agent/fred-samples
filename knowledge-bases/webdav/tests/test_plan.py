@@ -32,7 +32,7 @@ def file(path: str, version: str = "v1", size: int = 10) -> RemoteFile:
 
 def plan(
     *files: RemoteFile,
-    previous: dict[str, str] | None = None,
+    previous: dict[str, str | None] | None = None,
     exhaustive: bool = True,
     include: str = "**/*.md",
     exclude: str = "",

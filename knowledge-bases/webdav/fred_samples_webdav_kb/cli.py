@@ -18,9 +18,9 @@ for a deployment to dispatch it.
 It builds exactly the configuration a team's form will produce and calls exactly
 the code a dispatched run will call. By default the only thing standing in for
 Fred is the boundary, which logs what it would write; name a library with
-`--library` and the documents really go there, through the same boundary a
-dispatched run uses. The ledger is the real one either way, so a second run is
-genuinely incremental.
+`--library` and the documents really go there — and a second run against that
+library is genuinely incremental, because the library itself is what says what
+it already holds.
 """
 
 from __future__ import annotations
@@ -34,12 +34,16 @@ import ssl
 import time
 from collections.abc import Sequence
 from dataclasses import asdict
-from pathlib import Path
 
 from fred_samples_webdav_kb.document_boundary import LoggingBoundary, open_boundary
-from fred_samples_webdav_kb.ledger import STATE_DIR_ENV, ledger_path_for
 from fred_samples_webdav_kb.report import RunReport
-from fred_samples_webdav_kb.settings import ConfigurationError, Settings, read_settings
+from fred_samples_webdav_kb.settings import (
+    DEFAULT_PROFILE,
+    INGESTION_PROFILES,
+    ConfigurationError,
+    Settings,
+    read_settings,
+)
 from fred_samples_webdav_kb.synchronize import synchronize
 from fred_samples_webdav_kb.webdav import (
     CA_FILE_ENV,
@@ -83,9 +87,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         run.add_argument("--exclude", default="")
         run.add_argument("--max-files", type=int, default=None)
         run.add_argument(
-            "--instance",
-            default="dev",
-            help="which ledger to use, so two shares can be tried side by side",
+            "--profile",
+            choices=INGESTION_PROFILES,
+            default=DEFAULT_PROFILE,
+            help="ingestion profile (default: medium)",
         )
         run.add_argument(
             "--trust-any-certificate",
@@ -126,6 +131,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "password": os.getenv(PASSWORD_ENV, ""),
         "include": arguments.include,
         "exclude": arguments.exclude,
+        "profile": arguments.profile,
         "trust_any_certificate": bool(arguments.trust_any_certificate),
     }
     if arguments.max_files is not None:
@@ -144,13 +150,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"ca_file_unreadable: {error}")
         return 2
 
-    ledger_path = ledger_path_for(arguments.instance)
-    print(f"ledger: {ledger_path}  (${STATE_DIR_ENV} moves it)")
-
     if arguments.command == "watch":
-        return _watch(arguments, settings, verify, ledger_path)
+        return _watch(arguments, settings, verify)
 
-    report = asyncio.run(_run(settings, verify, ledger_path, arguments.library))
+    report = asyncio.run(_run(settings, verify, arguments.library))
     print(json.dumps(as_json(report), indent=2))
     return 0 if report.succeeded else 1
 
@@ -159,7 +162,6 @@ def _watch(
     arguments: argparse.Namespace,
     settings: Settings,
     verify: ssl.SSLContext | bool,
-    ledger_path: Path,
 ) -> int:
     """What Fred's schedule will do, until Fred's schedule exists.
 
@@ -173,7 +175,7 @@ def _watch(
         arguments.interval,
     )
     while True:
-        report = asyncio.run(_run(settings, verify, ledger_path, arguments.library))
+        report = asyncio.run(_run(settings, verify, arguments.library))
         watcher.info("%s", report.summary())
         for issue in report.errors:
             watcher.warning("  %s %s", issue.code, issue.subject or "")
@@ -205,7 +207,6 @@ def as_json(report: RunReport) -> dict[str, object]:
 async def _run(
     settings: Settings,
     verify: ssl.SSLContext | bool,
-    ledger_path: Path,
     library_id: str,
 ) -> RunReport:
     source = WebDavSource(
@@ -218,13 +219,16 @@ async def _run(
     # Named a library, and the pod environment is there: the documents really go
     # to Fred, through the same boundary a dispatched run uses. Without one this
     # stays a dry run, which is what makes the tool useful with no Fred at all.
-    boundary = open_boundary(library_id=library_id) if library_id else LoggingBoundary()
+    boundary = (
+        open_boundary(library_id=library_id, profile=settings.profile)
+        if library_id
+        else LoggingBoundary(profile=settings.profile)
+    )
     try:
         return await synchronize(
             settings=settings,
             source=source,
             boundary=boundary,
-            ledger_path=ledger_path,
         )
     finally:
         await boundary.aclose()

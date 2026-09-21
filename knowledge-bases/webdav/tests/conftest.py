@@ -22,7 +22,7 @@ one that points outside itself, one that contains itself.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
 from xml.sax.saxutils import escape
 
@@ -230,30 +230,57 @@ def source_for(
 
 
 class RecordingBoundary:
-    """A library that remembers what it was told, and can refuse on demand."""
+    """A library that holds what it accepted, and can refuse on demand.
+
+    `contents` is the library itself and survives across runs, which is what
+    makes a second run incremental now that nothing is kept on disk. The two
+    logs are per run, and `new_run` is what clears them — a run that is offered
+    a document is not the same thing as a library that holds one, and these
+    tests turn on telling the two apart.
+    """
 
     def __init__(
         self,
         *,
+        holds: Mapping[str, str | None] | None = None,
         fail_publish: Collection[str] = (),
         fail_retract: Collection[str] = (),
+        still_ingesting: Collection[str] = (),
+        fail_listing: bool = False,
     ) -> None:
+        self.contents: dict[str, str | None] = dict(holds or {})
         self.published: dict[str, tuple[bytes, str]] = {}
         self.retracted: list[str] = []
-        self._fail_publish = set(fail_publish)
-        self._fail_retract = set(fail_retract)
+        self.fail_listing = fail_listing
+        # Accepted and still being ingested: written, and correctly absent from
+        # the listing until it finishes. The gap the whole design turns on.
+        self.still_ingesting = set(still_ingesting)
+        self.fail_publish = set(fail_publish)
+        self.fail_retract = set(fail_retract)
+
+    def new_run(self) -> None:
+        self.published.clear()
+        self.retracted.clear()
 
     async def publish(
         self, *, relative_path: str, content: bytes, version: str
     ) -> None:
-        if relative_path in self._fail_publish:
+        if relative_path in self.fail_publish:
             raise RuntimeError(f"refused {relative_path}")
         self.published[relative_path] = (content, version)
+        if relative_path not in self.still_ingesting:
+            self.contents[relative_path] = version or None
+
+    async def documents(self) -> dict[str, str | None]:
+        if self.fail_listing:
+            raise RuntimeError("the library could not be read")
+        return dict(self.contents)
 
     async def retract(self, *, relative_path: str) -> None:
-        if relative_path in self._fail_retract:
+        if relative_path in self.fail_retract:
             raise RuntimeError(f"refused {relative_path}")
         self.retracted.append(relative_path)
+        self.contents.pop(relative_path, None)
 
     async def aclose(self) -> None:
         return None
@@ -281,11 +308,6 @@ def settings_for(
     else:
         configuration["max_files"] = None
     return read_settings(configuration)
-
-
-@pytest.fixture
-def ledger_path(tmp_path):
-    return tmp_path / "ledger.json"
 
 
 @pytest.fixture(autouse=True)

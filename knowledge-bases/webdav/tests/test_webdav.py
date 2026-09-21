@@ -23,15 +23,18 @@ import pytest
 from fred_samples_webdav_kb.source import NotAWebDavCollection, SourceUnavailable
 from fred_samples_webdav_kb.webdav import (
     CA_FILE_ENV,
+    MAX_ATTEMPTS,
     MAX_DEPTH,
     AddressError,
+    CertificateNotTrusted,
     FileTooLarge,
     TrustStoreError,
+    WebDavSource,
     address,
     configured_ca_file,
     tls_policy,
 )
-from tests.conftest import File, Share, source_for
+from tests.conftest import File, Share, share_url, source_for
 
 
 async def test_walks_nested_collections_and_names_paths_from_the_root():
@@ -369,3 +372,124 @@ def test_the_authority_is_read_from_the_pod_s_environment(monkeypatch):
 
     monkeypatch.delenv(CA_FILE_ENV, raising=False)
     assert configured_ca_file() == ""
+
+
+# ── a certificate the pod cannot verify ───────────────────────────────────────
+
+
+def _rejecting_source(share: Share) -> WebDavSource:
+    """A share whose certificate this pod has no authority for.
+
+    Built as httpx really reports one: a bare `ConnectError` carrying the
+    message and nothing else, the original reachable only through
+    `__context__`. Asserting on that shape is the point — a detector reading
+    `__cause__`, or matching the message, passes a hand-written chain and then
+    misses the real thing.
+    """
+
+    def handshake(request: httpx.Request) -> httpx.Response:
+        original = ssl.SSLCertVerificationError(
+            1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed"
+        )
+        original.verify_message = "unable to get local issuer certificate"
+        try:
+            raise original
+        except ssl.SSLCertVerificationError:
+            raise httpx.ConnectError(str(original), request=request) from None
+
+    return WebDavSource(
+        where=address(share_url(share)),
+        max_file_bytes=1_000_000,
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handshake),
+            follow_redirects=False,
+            base_url="",
+        ),
+    )
+
+
+async def test_an_untrusted_certificate_names_the_variable_that_fixes_it(monkeypatch):
+    """The likeliest first failure against a corporate share, and its remedy."""
+    monkeypatch.delenv(CA_FILE_ENV, raising=False)
+    source = _rejecting_source(Share(files={"a.md": File(b"a")}))
+    try:
+        with pytest.raises(CertificateNotTrusted) as raised:
+            await source.inventory()
+    finally:
+        await source.aclose()
+
+    message = str(raised.value)
+    assert "unable to get local issuer certificate" in message
+    assert CA_FILE_ENV in message
+    # The sentence that stops the next hour going into the server.
+    assert "curl" in message
+
+
+async def test_an_authority_that_does_not_certify_the_share_says_so(monkeypatch):
+    """Given a root and still refused is a different mistake from given none."""
+    monkeypatch.setenv(CA_FILE_ENV, "/etc/ssl/private-ca/root.pem")
+    source = _rejecting_source(Share(files={"a.md": File(b"a")}))
+    try:
+        with pytest.raises(CertificateNotTrusted, match="does not certify this share"):
+            await source.inventory()
+    finally:
+        await source.aclose()
+
+
+async def test_an_untrusted_certificate_is_not_retried():
+    """A trust store does not change between two attempts a second apart."""
+    attempts = 0
+
+    def handshake(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        original = ssl.SSLCertVerificationError(1, "CERTIFICATE_VERIFY_FAILED")
+        try:
+            raise original
+        except ssl.SSLCertVerificationError:
+            raise httpx.ConnectError("refused", request=request) from None
+
+    source = WebDavSource(
+        where=address("https://share.example.com/dav/"),
+        max_file_bytes=1_000,
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handshake),
+            follow_redirects=False,
+            base_url="",
+        ),
+    )
+    try:
+        with pytest.raises(CertificateNotTrusted):
+            await source.inventory()
+    finally:
+        await source.aclose()
+
+    assert attempts == 1
+
+
+async def test_a_transport_failure_that_is_not_a_certificate_is_still_retried(
+    monkeypatch,
+):
+    """The bound stays where it was for everything a retry can actually help."""
+    monkeypatch.setattr("fred_samples_webdav_kb.webdav.BACKOFF_SECONDS", 0)
+    attempts = 0
+
+    def flaky(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        raise httpx.ConnectError("connection reset", request=request)
+
+    source = WebDavSource(
+        where=address("https://share.example.com/dav/"),
+        max_file_bytes=1_000,
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(flaky), follow_redirects=False, base_url=""
+        ),
+    )
+    try:
+        with pytest.raises(SourceUnavailable):
+            await source.inventory()
+    finally:
+        await source.aclose()
+
+    assert attempts == MAX_ATTEMPTS

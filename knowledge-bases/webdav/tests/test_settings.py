@@ -109,3 +109,20 @@ def test_the_certificate_flag_must_be_a_boolean():
     with pytest.raises(ConfigurationError) as error:
         settings(trust_any_certificate="yes")
     assert error.value.code == "trust_any_certificate_invalid"
+
+
+@pytest.mark.parametrize("profile", ["fast", "medium", "rich"])
+def test_the_ingestion_profile_is_read(profile: str):
+    assert settings(profile=profile).profile == profile
+
+
+@pytest.mark.parametrize("configuration", [{}, {"profile": ""}, {"profile": None}])
+def test_an_omitted_or_cleared_profile_defaults_to_medium(configuration):
+    assert settings(**configuration).profile == "medium"
+
+
+@pytest.mark.parametrize("profile", ["turbo", "MEDIUM", 42])
+def test_an_invalid_profile_is_refused(profile):
+    with pytest.raises(ConfigurationError) as error:
+        settings(profile=profile)
+    assert error.value.code == "profile_invalid"

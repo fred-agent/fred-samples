@@ -103,6 +103,16 @@ class FileTooLarge(SourceUnavailable):
     """The share sent more bytes than this run agreed to carry."""
 
 
+class CertificateNotTrusted(SourceUnavailable):
+    """The share's certificate is signed by an authority this pod does not have.
+
+    Its own error because it is the first thing a corporate share does, and
+    because it is the one failure a retry cannot help and an operator cannot
+    diagnose from the share: the fault is in this pod's trust store, and the
+    same URL fetched with curl from a laptop works.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class Address:
     """Where the share is, split the way every request below needs it.
@@ -264,6 +274,9 @@ class WebDavSource:
                     _raise_for(response.status_code, "", f"reading {file.path}")
                     return await self._collect(response, file)
             except httpx.TransportError as error:
+                rejected = _certificate_rejected(error)
+                if rejected is not None:
+                    raise _not_trusted(rejected, f"reading {file.path}") from error
                 if attempt >= MAX_ATTEMPTS:
                     raise SourceUnavailable(f"reading {file.path}: {error}") from error
                 await _pause(attempt, None)
@@ -312,6 +325,12 @@ class WebDavSource:
                     "PROPFIND", url, content=_PROPFIND_BODY, headers=_PROPFIND_HEADERS
                 )
             except httpx.TransportError as error:
+                rejected = _certificate_rejected(error)
+                if rejected is not None:
+                    # Never retried: a trust store does not change between two
+                    # attempts a second apart, so three handshakes reach the
+                    # same verdict and only delay the message explaining it.
+                    raise _not_trusted(rejected, f"reaching {url}") from error
                 if attempt >= MAX_ATTEMPTS:
                     raise SourceUnavailable(f"reaching {url}: {error}") from error
                 await _pause(attempt, None)
@@ -467,6 +486,53 @@ def _size(properties: DavElement) -> int:
         # generate. Unknown reads as zero and the bound is enforced on the
         # bytes that actually arrive.
         return 0
+
+
+def _certificate_rejected(error: BaseException) -> ssl.SSLCertVerificationError | None:
+    """The certificate failure inside a transport error, if that is what it is.
+
+    Walked rather than matched on the message: httpx reports a handshake as a
+    plain `ConnectError` carrying only text, and the original is reached
+    through `__context__` rather than `__cause__` — the wrapping happens in a
+    different frame from the handshake, so the chain the wrapper builds ends
+    one link early.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLCertVerificationError):
+            return current
+        current = current.__cause__ or current.__context__
+    return None
+
+
+def _not_trusted(
+    failure: ssl.SSLCertVerificationError, what: str
+) -> CertificateNotTrusted:
+    """Say which trust store refused, and what would fix it.
+
+    Reading the environment again here rather than carrying it from `tls_policy`
+    is deliberate: what matters to whoever reads this is whether the pod was
+    given an authority at all, which is one variable and not a run's state.
+    """
+    ca_file = configured_ca_file()
+    remedy = (
+        f"${CA_FILE_ENV} names {ca_file}, and that authority does not certify "
+        "this share"
+        if ca_file
+        else "This pod trusts public authorities only; give the issuing "
+        f"authority's public root to the pod through ${CA_FILE_ENV}"
+    )
+    # `verify_message` is the short reason — "unable to get local issuer
+    # certificate" — and is set by the handshake, not by the class, so anything
+    # that did not come from one has only its text.
+    reason = getattr(failure, "verify_message", None) or failure
+    return CertificateNotTrusted(
+        f"{what}: the share's certificate is signed by an authority this pod "
+        f"does not trust ({reason}). {remedy}. Python reads no system trust "
+        "store, so curl working on a laptop says nothing about this."
+    )
 
 
 def _should_retry(status: int) -> bool:

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Literal, cast
 
 import pathspec
 
@@ -34,6 +35,9 @@ from fred_samples_webdav_kb.webdav import Address, AddressError, address
 DEFAULT_INCLUDE = "**/*.md"
 
 DEFAULT_MAX_FILES = 2000
+IngestionProfile = Literal["fast", "medium", "rich"]
+INGESTION_PROFILES = ("fast", "medium", "rich")
+DEFAULT_PROFILE: IngestionProfile = "medium"
 # Several documents are fetched at once and each is held whole before it is
 # written, so this bounds a pod's memory as much as it bounds one file. The
 # same figure as the sibling git sample, for the same reason.
@@ -86,6 +90,7 @@ class Settings:
     selection: Selection
     max_files: int | None
     max_file_bytes: int
+    profile: IngestionProfile = DEFAULT_PROFILE
 
 
 def read_settings(configuration: Mapping[str, object]) -> Settings:
@@ -110,6 +115,12 @@ def read_settings(configuration: Mapping[str, object]) -> Settings:
             "username_missing", "A password needs the user name it belongs to."
         )
 
+    profile = _text(configuration, "profile") or DEFAULT_PROFILE
+    if profile not in INGESTION_PROFILES:
+        raise ConfigurationError(
+            "profile_invalid", "profile must be fast, medium, or rich"
+        )
+
     return Settings(
         where=where,
         username=username,
@@ -121,6 +132,7 @@ def read_settings(configuration: Mapping[str, object]) -> Settings:
         selection=selection,
         max_files=_bound(configuration, "max_files", DEFAULT_MAX_FILES),
         max_file_bytes=DEFAULT_MAX_FILE_BYTES,
+        profile=cast(IngestionProfile, profile),
     )
 
 
