@@ -54,21 +54,16 @@ provisioned by fred-deployment-factory's `make keycloak-post-install`.
 
 ---
 
-## What is not built yet
+## Where the documents go
 
-Two pieces of the platform side are still open, so a real `run` cannot complete
-end to end today:
+Through Knowledge Flow's REST API, with the SDK's `DocumentPublisher`, in
+[`document_boundary.py`](fred_samples_local_folder_kb/document_boundary.py).
+When the pod's configuration names no `knowledge_flow_url`, that file logs what
+it would publish instead. It is the only place that knows the difference, and a
+Knowledge Base never writes to OpenSearch or S3 directly.
 
-- the Control Plane endpoints a run uses to fetch its configuration and report
-  its result;
-- the authorized document boundary. Documents will go through Knowledge Flow's
-  REST API; until then this sample calls
-  [`document_boundary.py`](fred_samples_local_folder_kb/document_boundary.py),
-  which logs what it would publish. That file is the seam, and it is the only
-  place that changes. A Knowledge Base never writes to OpenSearch or S3 directly.
-
-`fred-sdk` 3.7.0 is not on PyPI either, so `make dev` resolves it from the `fred`
-monorepo checked out next to this repository. `make dev-pypi` fails until it is.
+The full chain (a schedule dispatching a run that writes into a real library) has
+been exercised with the `webdav` sample; this one uses the same SDK path.
 
 ---
 

@@ -45,8 +45,8 @@ from fred_samples_local_folder_kb.knowledge_base import kb
 LOCAL_TEAM_ID = "local-team"
 DEFAULT_INSTANCE_ID = "local"
 # Fred creates the library with the instance and puts its id in the run context.
-# Until that exists, the developer names it — the handler cannot tell the
-# difference, which is what keeps this tool from being throwaway.
+# A hand-made run has no instance, so the developer names it — the handler cannot
+# tell the difference, which is what keeps this tool from being throwaway.
 LIBRARY_ID_ENV = "FRED_KB_LIBRARY_ID"
 DEFAULT_INTERVAL_SECONDS = 60
 

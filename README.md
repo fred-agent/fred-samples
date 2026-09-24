@@ -2,8 +2,13 @@
 
 Ready-to-run examples for the [Fred](https://site.fredlab.dev) agentic platform.
 
-Each sample is self-contained: a Python agent pod that you start with `make run` and
-talk to with `make cli`, paired with MCP servers when its workflow depends on them.
+Three kinds of samples, each self-contained:
+
+- **Agents** — one Python agent pod you start with `make run` and talk to with
+  `make cli`, paired with MCP servers when a workflow depends on them.
+- **Applications** — your own UI and API, rendered in Fred and reachable by its agents.
+- **Knowledge Bases** — pods that keep a team's library in sync with an external
+  source (a folder, a Git branch, a WebDAV share).
 
 > **Documentation** → [site.fredlab.dev](https://site.fredlab.dev)
 
@@ -254,9 +259,9 @@ make declaration                   # what `publish` would send to Fred
 make sync ROOT=/path/to/your/notes # one run, with no Fred and no Temporal
 ```
 
-Documents will go through Knowledge Flow's REST API, which a run cannot reach
-yet — until then the sample logs what it *would* publish, from one clearly
-marked file.
+A run writes documents through Knowledge Flow's REST API once the pod's
+configuration names a `knowledge_flow_url`; without one, it logs what it
+*would* publish, which is what `make sync` relies on.
 
 ### WebDAV share — sample Knowledge Base
 

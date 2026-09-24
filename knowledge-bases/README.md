@@ -217,7 +217,7 @@ burns the whole prefix.
 |---|---|
 | `publish` puts the definition in front of an admin | works |
 | enabling it for a team | works |
-| writing documents into a real library | works — `webdav` only, via `make sync LIBRARY=<id>` |
+| writing documents into a real library | works — in a scheduled run once `knowledge_flow_url` is set; by hand with `webdav`'s `make sync LIBRARY=<id>` |
 | a **schedule** dispatching a run to `make run` | works |
 
 The whole chain has been exercised against a local security-on stack: a

@@ -189,20 +189,20 @@ churn, and clear it when it gets large: the next run rebuilds what it needs.
 Through Knowledge Flow's **synchronizing ingestion surface** — the one that
 addresses a document by the key its source chose — with the pod's own workload
 identity, in [`knowledge_flow.py`](fred_samples_git_kb/knowledge_flow.py). That
-file is a placeholder for a client the SDK will publish itself; when it does,
-everything above it is unchanged. A Knowledge Base never writes to OpenSearch
-or object storage directly.
+file predates the SDK's own `DocumentPublisher`, which the `local-folder` and
+`webdav` samples use; moving to it would change nothing above that file. A
+Knowledge Base never writes to OpenSearch or object storage directly.
 
-Set no `FRED_KNOWLEDGE_FLOW_URL` and the run logs what it would write instead,
-which is what makes `make sync` work against a real repository with no Fred.
+When the pod's configuration names no `knowledge_flow_url`, the run logs what
+it would write instead, which is what makes `make sync` work against a real
+repository with no Fred.
 
-Two things this implementation ran into, worth deciding:
+Things this implementation ran into:
 
-- **A library's contents cannot be read back.** A full pass therefore issues
-  no removals: a document the repository dropped while the pod was away stays
-  until a later difference mentions it. The same gap is why there is no
-  periodic self-healing sweep — without an inventory exchange, re-reading a
-  repository means re-ingesting every document in it.
+- **This sample does not read a library's contents back.** A full pass
+  therefore issues no removals: a document the repository dropped while the pod
+  was away stays until a later difference mentions it. `DocumentPublisher.documents()`
+  now offers that inventory; this sample does not use it yet.
 - **A rename costs a re-upload and a delete.** There is no way to move a
   document from one source key to another, so the document gets a new identity
   on the Fred side for what the repository considers the same file.

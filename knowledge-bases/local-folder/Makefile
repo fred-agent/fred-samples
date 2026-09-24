@@ -38,9 +38,9 @@ $(TARGET)/.uv-installed: $(TARGET)/.venv-created
 	@touch $@
 
 # pyproject.toml's [tool.uv.sources] points fred-sdk at ../../../fred/libs
-# (local monorepo checkout, sibling to this repo) by default. The Knowledge
-# Base authoring surface is not published yet, so `make dev-pypi` cannot work
-# for this sample until fred-sdk 3.7.0 is on PyPI.
+# (local monorepo checkout, sibling to this repo) by default, so a change to the
+# SDK is tried here before it is released. `make dev-pypi` resolves the published
+# SDK instead, which is what the deployable image and an outside consumer get.
 $(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
 	VIRTUAL_ENV= $(UV_RUN) sync --extra dev
 	@touch $@

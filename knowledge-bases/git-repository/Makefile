@@ -39,8 +39,9 @@ $(TARGET)/.uv-installed: $(TARGET)/.venv-created
 
 # pyproject.toml's [tool.uv.sources] points fred-sdk at ../../../fred/libs
 # (local monorepo checkout, sibling to this repo) by default, exactly as the
-# local-folder sample does: the Knowledge Base authoring surface is not on PyPI
-# yet, so `make dev-pypi` cannot work for this sample until it is.
+# local-folder sample does — so a change to the SDK is tried here before it is
+# released. `make dev-pypi` resolves the published SDK instead, which is what
+# the deployable image and an outside consumer of this repository get.
 $(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
 	VIRTUAL_ENV= $(UV_RUN) sync --extra dev
 	@touch $@
