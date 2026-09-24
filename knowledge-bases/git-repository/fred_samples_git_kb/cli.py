@@ -122,6 +122,7 @@ def as_json(report: RunReport) -> dict[str, object]:
         "created": report.written_new,
         "updated": report.written_existing,
         "removed": report.retracted,
+        "unchanged": report.unchanged,
         "skipped": report.skipped,
         "warnings": [asdict(issue) for issue in report.warnings],
         "errors": [asdict(issue) for issue in report.errors],

@@ -25,13 +25,13 @@ declaration and the handler are the whole authoring surface — then
 ## The idea: the pod keeps nothing
 
 The sibling [`local-folder`](../local-folder) sample keeps a JSON ledger on
-disk — a hash and a Fred identifier per file. This one keeps **nothing**:
+disk — the version it last published, per file. This one keeps **nothing**:
 
 | What | Where it lives |
 |---|---|
 | Which revision the library is synchronized to | Fred, as the library's source version |
 | What changed since then | Git, as the difference between two snapshots |
-| A document's identity | its path in the repository, which Fred stores as the source key |
+| A document's identity | its path relative to the configured folder, which Fred stores as the source key |
 | A document's version | its Git blob id — equal ids mean equal bytes |
 
 So the pod can be restarted, rescheduled or replaced between two runs and the
@@ -116,13 +116,21 @@ a team is choosing, and it lives in
    has not moved, stop** — that is one ref listing and nothing downloaded,
    which is what most scheduled runs are.
 2. Fetch that one revision, depth 1: the snapshot, never the history.
-3. Compare it with the snapshot the cursor names — or read the whole
-   revision, on a first run, a changed selection, or a mirror this pod does
-   not have.
+3. Compare it with the snapshot the cursor names — or, on a first run, a
+   changed selection, or a mirror this pod does not have, compare the whole
+   revision with what the library holds.
 4. Write, then remove, so a renamed document is never briefly absent.
 5. Record the new cursor — **only if nothing failed**.
 
-### Four rules worth knowing
+### Five rules worth knowing
+
+**A full pass compares before it writes.** It reads the library's inventory
+back from Fred: a document already held at the same blob id is left alone, so
+a lost cursor or mirror costs a comparison rather than re-ingesting the
+repository, and a document the library holds that the revision no longer
+selects is removed — every file was seen, so its absence is proven. If any
+write fails, that pass removes nothing: it cannot tell a rename from a
+deletion, and the next run replays it.
 
 **A rename is four cases, not one.** What matters is not that the file moved
 but whether each of its two paths belongs in the library: in and in is a write
@@ -186,12 +194,12 @@ churn, and clear it when it gets large: the next run rebuilds what it needs.
 
 ## Where the documents go
 
-Through Knowledge Flow's **synchronizing ingestion surface** — the one that
-addresses a document by the key its source chose — with the pod's own workload
-identity, in [`knowledge_flow.py`](fred_samples_git_kb/knowledge_flow.py). That
-file predates the SDK's own `DocumentPublisher`, which the `local-folder` and
-`webdav` samples use; moving to it would change nothing above that file. A
-Knowledge Base never writes to OpenSearch or object storage directly.
+Through the SDK's `DocumentPublisher`, with the pod's own workload identity, in
+[`knowledge_flow.py`](fred_samples_git_kb/knowledge_flow.py): writes, removals,
+the inventory a full pass compares against, and the cursor itself. Each write
+is followed until Fred has ingested it, so a document counted as written has
+landed — which is what lets the cursor move past it. A Knowledge Base never
+writes to OpenSearch or object storage directly.
 
 When the pod's configuration names no `knowledge_flow_url`, the run logs what
 it would write instead, which is what makes `make sync` work against a real
@@ -199,10 +207,6 @@ repository with no Fred.
 
 Things this implementation ran into:
 
-- **This sample does not read a library's contents back.** A full pass
-  therefore issues no removals: a document the repository dropped while the pod
-  was away stays until a later difference mentions it. `DocumentPublisher.documents()`
-  now offers that inventory; this sample does not use it yet.
 - **A rename costs a re-upload and a delete.** There is no way to move a
   document from one source key to another, so the document gets a new identity
   on the Fred side for what the repository considers the same file.

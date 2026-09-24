@@ -71,22 +71,24 @@ def test_the_repository_is_the_only_thing_a_team_must_fill_in():
 
 def test_a_run_reports_fred_s_counters_from_what_this_implementation_counted():
     report = RunReport(pass_kind=PassKind.full, revision="a" * 40, exhaustive=True)
-    report.considered = 3
+    report.considered = 5
+    report.unchanged = 2
     report.wrote(created=True)
     report.wrote(created=False)
-    report.removed(existed=True)
+    report.removed()
     report.skip("big.md", "too_large")
 
     result = _result(report)
 
     assert result.outcome is KnowledgeBaseRunOutcome.succeeded
     assert result.reconciliation_complete is True
-    assert (result.discovered, result.created, result.updated, result.removed) == (
-        3,
-        1,
-        1,
-        1,
-    )
+    assert (
+        result.discovered,
+        result.created,
+        result.updated,
+        result.removed,
+        result.unchanged,
+    ) == (5, 1, 1, 1, 2)
     assert [issue.code for issue in result.warnings] == ["too_large"]
 
 

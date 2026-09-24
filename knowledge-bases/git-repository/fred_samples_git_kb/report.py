@@ -49,6 +49,7 @@ class RunReport:
     written_new: int = 0
     written_existing: int = 0
     retracted: int = 0
+    unchanged: int = 0
     skipped: int = 0
     warnings: list[Issue] = field(default_factory=list)
     errors: list[Issue] = field(default_factory=list)
@@ -59,9 +60,8 @@ class RunReport:
         else:
             self.written_existing += 1
 
-    def removed(self, *, existed: bool) -> None:
-        if existed:
-            self.retracted += 1
+    def removed(self) -> None:
+        self.retracted += 1
 
     def skip(self, source_key: str, reason: str, message: str = "") -> None:
         """One document this run will not carry, and why. Never an error.
@@ -101,6 +101,8 @@ class RunReport:
             f"{self.written_existing} updated",
             f"{self.retracted} removed",
         ]
+        if self.unchanged:
+            parts.append(f"{self.unchanged} unchanged")
         if self.skipped:
             parts.append(f"{self.skipped} skipped")
         if self.errors:

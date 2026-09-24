@@ -113,6 +113,7 @@ def test_a_moved_branch_is_read_as_a_difference():
 def test_a_full_pass_writes_what_the_selection_chooses_and_says_it_saw_everything():
     plan = plan_full(
         [file("README.md"), file("notes.txt"), file("docs/guide.md")],
+        held={},
         selection=markdown(),
         max_files=None,
         max_file_bytes=BIG,
@@ -122,31 +123,66 @@ def test_a_full_pass_writes_what_the_selection_chooses_and_says_it_saw_everythin
     assert plan.exhaustive is True
 
 
-def test_a_full_pass_removes_nothing():
-    """Fred cannot be asked what a library holds, so absence proves nothing."""
+def test_a_full_pass_leaves_alone_what_the_library_already_holds_at_that_version():
+    """Losing the cursor costs a comparison, not re-ingesting the repository."""
     plan = plan_full(
-        [file("a.md")], selection=markdown(), max_files=None, max_file_bytes=BIG
+        [file("a.md", blob="same"), file("b.md", blob="new")],
+        held={"a.md": "same", "b.md": "old"},
+        selection=markdown(),
+        max_files=None,
+        max_file_bytes=BIG,
     )
 
+    assert [write.source_key for write in plan.writes] == ["b.md"]
+    assert plan.unchanged == 1
     assert plan.removals == ()
 
 
-def test_the_key_is_the_repository_path_and_the_location_is_relative_to_the_folder():
+def test_a_full_pass_removes_what_the_library_holds_and_the_revision_does_not():
+    """Every file was seen, so an absence is proven rather than inferred."""
+    plan = plan_full(
+        [file("a.md"), file("big.md", size=BIG + 1), file("notes.txt")],
+        held={"a.md": "abc123", "big.md": "v1", "gone.md": "v1", "notes.txt": "v1"},
+        selection=markdown(),
+        max_files=None,
+        max_file_bytes=BIG,
+    )
+
+    # big.md is skipped yet still present; notes.txt is no longer selected.
+    assert [removal.source_key for removal in plan.removals] == [
+        "gone.md",
+        "notes.txt",
+    ]
+
+
+def test_the_key_is_the_path_relative_to_the_configured_folder():
     plan = plan_full(
         [file("docs/swift/README.md")],
+        held={"old.md": "v1"},
         selection=Selection(subdirectory="docs"),
         max_files=None,
         max_file_bytes=BIG,
     )
 
-    written = plan.writes[0]
-    assert written.source_key == "docs/swift/README.md"
-    assert written.library_path == "swift/README.md"
+    assert plan.writes[0].source_key == "swift/README.md"
+    assert [removal.source_key for removal in plan.removals] == ["old.md"]
+
+
+def test_an_incremental_removal_uses_the_same_key_as_the_write():
+    plan = plan_incremental(
+        [SourceChange(ChangeKind.deleted, previous_path="docs/gone.md")],
+        selection=Selection(subdirectory="docs"),
+        max_files=None,
+        max_file_bytes=BIG,
+    )
+
+    assert [removal.source_key for removal in plan.removals] == ["gone.md"]
 
 
 def test_the_document_version_is_the_content_identity():
     plan = plan_full(
         [file("a.md", blob="cafe")],
+        held={},
         selection=markdown(),
         max_files=None,
         max_file_bytes=BIG,
@@ -160,6 +196,7 @@ def test_too_many_files_is_refused_rather_than_half_synchronized():
     with pytest.raises(LibraryTooLarge) as refused:
         plan_full(
             [file(f"{index}.md") for index in range(5)],
+            held={},
             selection=markdown(),
             max_files=3,
             max_file_bytes=BIG,
@@ -183,7 +220,9 @@ def test_too_many_files_is_refused_rather_than_half_synchronized():
     ],
 )
 def test_what_cannot_be_ingested_is_skipped_and_named(entry: SourceFile, reason: str):
-    plan = plan_full([entry], selection=markdown(), max_files=None, max_file_bytes=BIG)
+    plan = plan_full(
+        [entry], held={}, selection=markdown(), max_files=None, max_file_bytes=BIG
+    )
 
     assert plan.writes == ()
     assert [skip.reason for skip in plan.skips] == [reason]

@@ -7,9 +7,10 @@ requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
   # The `knowledge-base` extra brings the workflow engine the `run` command
-  # needs; `publish` and the handler itself do not load it. 4.1.0 is the first
-  # release that ships `fred_pod`, which this sample imports for its M2M token.
-  "fred-sdk[knowledge-base]>=4.1.0",
+  # needs; `publish` and the handler itself do not load it. 4.1.1 adds the
+  # cursor calls (`DocumentPublisher.source_version`); until it is on PyPI,
+  # `make dev` resolves it from the fred checkout below.
+  "fred-sdk[knowledge-base]>=4.1.1",
   # Git as a library: no binary in the image, no subprocess, and the token
   # passed as a parameter rather than embedded in a URL or a command line.
   "dulwich>=1.2.14",

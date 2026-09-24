@@ -104,7 +104,15 @@ async def synchronize(
             selection_digest=digest,
             base_available=base_available,
         )
-        plan = await _build(choice, head, settings, source)
+        held: dict[str, str | None] = {}
+        if choice.kind is PassKind.full:
+            try:
+                held = await library.documents()
+            except Exception as error:  # noqa: BLE001 - same reasoning as the cursor
+                report = RunReport(pass_kind=PassKind.full, revision=head)
+                report.fail("library_not_read", str(error))
+                return report
+        plan = await _build(choice, head, settings, source, held)
     except SourceUnavailable as error:
         return _unreachable(error)
     except LibraryTooLarge as error:
@@ -117,7 +125,11 @@ async def synchronize(
         revision=head,
         base=choice.base if choice.kind is PassKind.incremental else None,
         exhaustive=plan.exhaustive,
-        considered=len(plan.writes) + len(plan.removals) + len(plan.skips),
+        considered=len(plan.writes)
+        + len(plan.removals)
+        + len(plan.skips)
+        + plan.unchanged,
+        unchanged=plan.unchanged,
     )
     if choice.reason != "since_last_run":
         report.warn(choice.reason, "a full pass was needed")
@@ -140,7 +152,11 @@ async def synchronize(
 
 
 async def _build(
-    choice: PassChoice, head: str, settings: Settings, source: RepositorySource
+    choice: PassChoice,
+    head: str,
+    settings: Settings,
+    source: RepositorySource,
+    held: dict[str, str | None],
 ) -> Plan:
     if choice.kind is PassKind.incremental:
         assert choice.base is not None
@@ -154,6 +170,7 @@ async def _build(
     files = await asyncio.to_thread(source.inventory, head)
     return plan_full(
         files,
+        held=held,
         selection=settings.selection,
         max_files=settings.max_files,
         max_file_bytes=settings.max_file_bytes,
@@ -202,7 +219,6 @@ async def _apply(
             try:
                 created = await library.write(
                     source_key=write.source_key,
-                    path=write.library_path,
                     document_version=write.document_version,
                     content=content,
                 )
@@ -214,7 +230,10 @@ async def _apply(
 
     await asyncio.gather(*(one(write) for write in plan.writes))
 
-    for removal in plan.removals:
+    # A full pass cannot pair a removal with the write replacing it, so after a
+    # failed write it removes nothing; the run has failed and the next one replays.
+    removals = () if plan.exhaustive and unwritten else plan.removals
+    for removal in removals:
         if len(report.errors) >= FAILURE_BUDGET:
             abandoned += 1
             continue
@@ -236,11 +255,11 @@ async def _apply(
 
 async def _remove(removal: Removal, *, library: Library, report: RunReport) -> None:
     try:
-        existed = await library.remove(source_key=removal.source_key)
+        await library.remove(source_key=removal.source_key)
     except Exception as error:  # noqa: BLE001 - one document's failure
         report.fail("remove_failed", str(error), subject=removal.source_key)
         return
-    report.removed(existed=existed)
+    report.removed()
 
 
 def _unreachable(error: SourceUnavailable) -> RunReport:

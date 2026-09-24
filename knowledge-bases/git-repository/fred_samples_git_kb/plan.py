@@ -22,6 +22,7 @@ all what a rename means, which is where a synchronizer usually goes wrong.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -82,13 +83,13 @@ def choose_pass(
 class Write:
     """One document to put in the library.
 
-    The key is the repository's own path and never changes meaning; the path
-    only says where it sits. The version is the content's identity, so Fred can
-    be told what it is holding without anyone hashing anything twice.
+    The key is where the document sits in the library: the repository path,
+    relative to the configured folder, which cannot change once an instance
+    exists. The version is the content's identity, so Fred can be told what it
+    is holding without anyone hashing anything twice.
     """
 
     source_key: str
-    library_path: str
     document_version: str
     file: SourceFile
 
@@ -124,6 +125,7 @@ class Plan:
     writes: tuple[Write, ...] = ()
     removals: tuple[Removal, ...] = ()
     skips: tuple[Skip, ...] = ()
+    unchanged: int = 0
     exhaustive: bool = False
 
 
@@ -147,16 +149,18 @@ class LibraryTooLarge(Exception):
 def plan_full(
     files: list[SourceFile],
     *,
+    held: Mapping[str, str | None],
     selection: Selection,
     max_files: int | None,
     max_file_bytes: int,
 ) -> Plan:
-    """Plan a pass over everything the revision holds.
+    """Plan a pass over everything the revision holds, against what Fred holds.
 
-    It issues no removals. Fred offers no way to ask what a library already
-    contains, so a document the repository dropped while this pod was away
-    stays until a later diff mentions it. The alternative — deducing removals
-    from absence — is exactly what Fred refuses to do, and for the same reason.
+    `held` is the library's own inventory, by key with its version. A document
+    already held at the same version is not written again, so losing the cursor
+    costs a comparison rather than re-ingesting the whole repository. A held key
+    the revision no longer selects is removed: this pass saw every file, so its
+    absence is proven, not inferred.
     """
     selected = [entry for entry in files if selection.selects(entry.path)]
     if max_files is not None and len(selected) > max_files:
@@ -166,7 +170,16 @@ def plan_full(
     skips: list[Skip] = []
     for entry in selected:
         _record(entry, selection, max_file_bytes, writes, skips)
-    return Plan(writes=tuple(writes), skips=tuple(skips), exhaustive=True)
+    changed = [w for w in writes if held.get(w.source_key) != w.document_version]
+    present = {selection.library_path(entry.path) for entry in selected}
+    return Plan(
+        writes=tuple(changed),
+        # A skipped file is still present: a skip never removes.
+        removals=tuple(Removal(key) for key in sorted(held) if key not in present),
+        skips=tuple(skips),
+        unchanged=len(writes) - len(changed),
+        exhaustive=True,
+    )
 
 
 def plan_incremental(
@@ -220,7 +233,10 @@ def plan_incremental(
             # it already has under the old one. A skip never removes.
             continue
         removals.append(
-            Removal(previous, replaced_by=written.source_key if written else None)
+            Removal(
+                selection.library_path(previous),
+                replaced_by=written.source_key if written else None,
+            )
         )
 
     return Plan(
@@ -249,8 +265,7 @@ def _record(
         skips.append(Skip(entry.path, reason))
         return None
     write = Write(
-        source_key=entry.path,
-        library_path=selection.library_path(entry.path),
+        source_key=selection.library_path(entry.path),
         document_version=entry.blob_id,
         file=entry,
     )

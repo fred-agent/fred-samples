@@ -186,10 +186,9 @@ async def synchronize(context: KnowledgeBaseRunContext) -> KnowledgeBaseSyncResu
 def _result(report: RunReport) -> KnowledgeBaseSyncResult:
     """Say what happened in Fred's vocabulary.
 
-    The one place the two vocabularies meet. Fred asks for five counters;
-    `unchanged` is not among the things this implementation can prove, because
-    neither a difference between two revisions nor a full pass enumerates what
-    was left alone — so it is reported as nothing rather than guessed.
+    The one place the two vocabularies meet. `unchanged` is only proven by a
+    full pass, which compares every file with what the library holds; a
+    difference between two revisions never enumerates what was left alone.
     """
     return KnowledgeBaseSyncResult(
         outcome=(
@@ -203,6 +202,7 @@ def _result(report: RunReport) -> KnowledgeBaseSyncResult:
         created=report.written_new,
         updated=report.written_existing,
         removed=report.retracted,
+        unchanged=report.unchanged,
         warnings=[_issue(issue) for issue in report.warnings],
         errors=[_issue(issue) for issue in report.errors],
         metrics=report.metrics(),

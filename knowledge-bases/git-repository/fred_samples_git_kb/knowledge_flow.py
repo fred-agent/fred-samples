@@ -14,136 +14,70 @@
 """
 The seam where this Knowledge Base hands documents to Fred.
 
-It speaks Knowledge Flow's synchronizing ingestion surface — the one that
-addresses a document by the key its source chose — with the pod's own
-workload identity, so nothing here holds a store credential and no document
-carries a Fred-side identifier back into this implementation.
+Everything goes through the SDK's `DocumentPublisher`, with the pod's own
+workload identity: this sample writes no authentication code and holds no store
+credential. A Knowledge Base never writes to OpenSearch or object storage
+directly.
 
-This file is temporary by design: the SDK will publish its own client for this
-surface, and when it does, everything below collapses into using it. Nothing
-above this file changes when that happens.
-
-Without a Knowledge Flow URL in the environment it logs instead, which is what
-lets a run be tried against a real repository with no Fred at all.
+Without a Knowledge Flow URL in the configuration it logs instead, which is
+what lets a run be tried against a real repository with no Fred at all.
 """
 
 from __future__ import annotations
 
 import logging
-import mimetypes
 
-import httpx
-from fred_pod import M2MTokenProvider
-from fred_sdk.knowledge_base import MissingPodConfiguration
+from fred_sdk.knowledge_base import DocumentPublisher, MissingPodConfiguration
 from fred_sdk.knowledge_base.configuration import PodConfiguration
 
 from fred_samples_git_kb.library import Library, LibraryError, LoggingLibrary
 
 logger = logging.getLogger(__name__)
 
-# A write converts and indexes the document before it answers, so this is
-# minutes rather than the seconds a metadata call would get.
-_WRITE_TIMEOUT = httpx.Timeout(300.0, connect=10.0)
-
 # Which configured document source a write is attributed to. Knowledge Flow
 # resolves this against its own deployment configuration, so a Knowledge Base
 # cannot name itself here: it is the platform's vocabulary, not ours.
 SOURCE_TAG = "fred"
 
-# What a caller is told about a failure. The rest goes to the log instead of
-# into a run report an operator reads.
-_MAX_DETAIL = 200
-
 
 class KnowledgeFlowLibrary:
-    """One library, written through the surface meant for a synchronizing caller."""
+    """One library, written and read back through the SDK.
 
-    def __init__(self, configuration: PodConfiguration, *, library_id: str) -> None:
-        self._base_url = configuration.knowledge_flow_url
-        self._library_id = library_id
-        self._client = httpx.AsyncClient(timeout=_WRITE_TIMEOUT)
-        # Built by the configuration, never here: it already knows the realm,
-        # the client and which environment variable holds the secret.
-        self._tokens = M2MTokenProvider(configuration.m2m)
+    Fred accepts a write and ingests it afterwards; `write` follows each one to
+    its end, so a document counted as written has landed — which is what lets
+    the cursor move past it.
+    """
 
-    # ── the cursor ────────────────────────────────────────────────────────────
+    def __init__(self, publisher: DocumentPublisher) -> None:
+        self._publisher = publisher
 
     async def read_cursor(self) -> str | None:
-        response = await self._client.get(
-            f"{self._documents_base}/source-version", headers=await self._headers()
-        )
-        self._raise_for(response, "reading the library's source version")
-        return response.json().get("source_version")
+        return await self._publisher.source_version()
 
     async def record_cursor(self, value: str) -> None:
-        response = await self._client.put(
-            f"{self._documents_base}/source-version",
-            json={"source_version": value},
-            headers=await self._headers(),
-        )
-        self._raise_for(response, "recording the library's source version")
+        await self._publisher.record_source_version(value)
 
-    # ── the documents ─────────────────────────────────────────────────────────
+    async def documents(self) -> dict[str, str | None]:
+        return await self._publisher.documents()
 
     async def write(
-        self,
-        *,
-        source_key: str,
-        path: str,
-        document_version: str,
-        content: bytes,
+        self, *, source_key: str, document_version: str, content: bytes
     ) -> bool:
-        form = {
-            "path": path,
-            "source_key": source_key,
-            "document_version": document_version,
-            "source_tag": SOURCE_TAG,
-        }
-        response = await self._client.post(
-            f"{self._documents_base}/documents",
-            data=form,
-            files={
-                "file": (
-                    path.rsplit("/", 1)[-1],
-                    content,
-                    mimetypes.guess_type(path)[0] or "application/octet-stream",
-                )
-            },
-            headers=await self._headers(),
+        handle = await self._publisher.publish(
+            relative_path=source_key, content=content, version=document_version
         )
-        self._raise_for(response, f"writing {source_key}")
-        # The answer is an outcome, not a progress stream: whether this key was
-        # new to the library is the library's to say, not something to remember.
-        return bool(response.json().get("created", False))
+        outcome = await self._publisher.wait(handle.task_id)
+        if not outcome.succeeded:
+            raise LibraryError(
+                f"ingestion {outcome.state}: {outcome.error or 'no reason given'}"
+            )
+        return handle.created
 
-    async def remove(self, *, source_key: str) -> bool:
-        response = await self._client.request(
-            "DELETE",
-            f"{self._documents_base}/documents",
-            params={"source_key": source_key},
-            headers=await self._headers(),
-        )
-        self._raise_for(response, f"removing {source_key}")
-        return bool(response.json().get("removed", False))
+    async def remove(self, *, source_key: str) -> None:
+        await self._publisher.retract(relative_path=source_key)
 
     async def aclose(self) -> None:
-        await self._client.aclose()
-
-    # ── internals ─────────────────────────────────────────────────────────────
-
-    @property
-    def _documents_base(self) -> str:
-        return f"{self._base_url}/libraries/{self._library_id}"
-
-    async def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {await self._tokens.get_token()}"}
-
-    @staticmethod
-    def _raise_for(response: httpx.Response, what: str) -> None:
-        if response.status_code < 400:
-            return
-        detail = " ".join(response.text.split())[:_MAX_DETAIL]
-        raise LibraryError(f"{what}: {response.status_code} {detail}")
+        await self._publisher.aclose()
 
 
 def open_library(library_id: str) -> Library:
@@ -158,4 +92,6 @@ def open_library(library_id: str) -> Library:
         logger.info("No Knowledge Flow URL set: logging documents instead")
         return LoggingLibrary()
 
-    return KnowledgeFlowLibrary(configuration, library_id=library_id)
+    return KnowledgeFlowLibrary(
+        DocumentPublisher(configuration, library_id=library_id, source_tag=SOURCE_TAG)
+    )

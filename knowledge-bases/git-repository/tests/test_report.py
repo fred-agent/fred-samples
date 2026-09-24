@@ -32,11 +32,12 @@ def test_writes_are_counted_by_whether_the_library_already_held_the_key():
     assert (counted.written_new, counted.written_existing) == (1, 2)
 
 
-def test_removing_a_key_the_library_never_held_counts_nothing():
+def test_unchanged_documents_are_said_so_only_when_there_are_some():
     counted = report()
-    counted.removed(existed=False)
+    assert "unchanged" not in counted.summary()
 
-    assert counted.retracted == 0
+    counted.unchanged = 4
+    assert "4 unchanged" in counted.summary()
 
 
 def test_a_skip_is_a_warning_and_never_stops_the_cursor():

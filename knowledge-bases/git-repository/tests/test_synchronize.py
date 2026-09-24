@@ -45,7 +45,7 @@ class RecordingLibrary:
 
     def __init__(self, *, refuse: set[str] | None = None) -> None:
         self.cursor: str | None = None
-        self.documents: dict[str, tuple[str, bytes]] = {}
+        self.held: dict[str, tuple[str, bytes]] = {}
         self.retracted: list[str] = []
         self.refuse = refuse or set()
 
@@ -55,18 +55,21 @@ class RecordingLibrary:
     async def record_cursor(self, value: str) -> None:
         self.cursor = value
 
+    async def documents(self) -> dict[str, str | None]:
+        return {key: version for key, (version, _) in self.held.items()}
+
     async def write(
-        self, *, source_key: str, path: str, document_version: str, content: bytes
+        self, *, source_key: str, document_version: str, content: bytes
     ) -> bool:
         if source_key in self.refuse:
             raise LibraryError(f"refusing {source_key}")
-        created = source_key not in self.documents
-        self.documents[source_key] = (path, content)
+        created = source_key not in self.held
+        self.held[source_key] = (document_version, content)
         return created
 
-    async def remove(self, *, source_key: str) -> bool:
+    async def remove(self, *, source_key: str) -> None:
         self.retracted.append(source_key)
-        return self.documents.pop(source_key, None) is not None
+        self.held.pop(source_key, None)
 
     async def aclose(self) -> None:
         return None
@@ -105,7 +108,7 @@ def test_a_first_run_writes_the_whole_selection_and_records_where_it_got_to(
     assert report.pass_kind is PassKind.full
     assert report.exhaustive is True
     assert report.written_new == 2
-    assert set(library.documents) == {"a.md", "docs/b.md"}
+    assert set(library.held) == {"a.md", "docs/b.md"}
     assert library.cursor is not None
 
 
@@ -135,7 +138,7 @@ def test_editing_one_document_updates_that_one(origin: Origin, mirror: Path):
     assert report.pass_kind is PassKind.incremental
     assert report.exhaustive is False
     assert (report.written_new, report.written_existing) == (0, 1)
-    assert library.documents["b.md"][1] == b"revised"
+    assert library.held["b.md"][1] == b"revised"
 
 
 def test_a_document_the_repository_dropped_leaves_the_library(
@@ -150,7 +153,7 @@ def test_a_document_the_repository_dropped_leaves_the_library(
 
     assert report.retracted == 1
     assert library.retracted == ["b.md"]
-    assert set(library.documents) == {"a.md"}
+    assert set(library.held) == {"a.md"}
 
 
 def test_a_renamed_document_moves_under_its_new_key(origin: Origin, mirror: Path):
@@ -162,7 +165,7 @@ def test_a_renamed_document_moves_under_its_new_key(origin: Origin, mirror: Path
 
     run(origin, mirror, library)
 
-    assert set(library.documents) == {"new.md"}
+    assert set(library.held) == {"new.md"}
     assert library.retracted == ["old.md"]
 
 
@@ -180,7 +183,7 @@ def test_a_rename_whose_write_failed_keeps_the_old_document(
     report = run(origin, mirror, library)
 
     assert not report.succeeded
-    assert set(library.documents) == {"old.md"}
+    assert set(library.held) == {"old.md"}
     assert library.retracted == []
 
 
@@ -195,7 +198,57 @@ def test_widening_the_selection_re_reads_the_whole_repository(
     report = run(origin, mirror, library, selection=Selection(include=["**/*.txt"]))
 
     assert report.pass_kind is PassKind.full
-    assert "notes.txt" in library.documents
+    assert "notes.txt" in library.held
+
+
+def test_a_lost_cursor_costs_a_comparison_and_still_removes_what_the_branch_dropped(
+    origin: Origin, mirror: Path
+):
+    origin.commit({"a.md": b"one", "b.md": b"two"})
+    library = RecordingLibrary()
+    run(origin, mirror, library)
+    origin.commit({"a.md": b"one"})
+    library.cursor = None
+
+    report = run(origin, mirror, library)
+
+    assert report.pass_kind is PassKind.full
+    assert (report.written_new, report.written_existing) == (0, 0)
+    assert report.unchanged == 1
+    assert library.retracted == ["b.md"]
+    assert set(library.held) == {"a.md"}
+
+
+def test_a_full_pass_with_a_failed_write_removes_nothing(origin: Origin, mirror: Path):
+    """It cannot tell a rename from a deletion, so it keeps both until the replay."""
+    origin.commit({"old.md": b"one"})
+    library = RecordingLibrary()
+    run(origin, mirror, library)
+    origin.commit({"new.md": b"one"})
+    library.cursor = None
+    library.refuse = {"new.md"}
+
+    report = run(origin, mirror, library)
+
+    assert not report.succeeded
+    assert library.retracted == []
+    assert set(library.held) == {"old.md"}
+
+
+def test_a_library_that_cannot_list_what_it_holds_is_not_written_to(
+    origin: Origin, mirror: Path
+):
+    class Unlisted(RecordingLibrary):
+        async def documents(self) -> dict[str, str | None]:
+            raise LibraryError("knowledge flow did not answer")
+
+    library = Unlisted()
+    origin.commit({"a.md": b"one"})
+
+    report = run(origin, mirror, library)
+
+    assert [issue.code for issue in report.errors] == ["library_not_read"]
+    assert library.held == {}
 
 
 def test_a_document_that_could_not_be_written_keeps_the_cursor_where_it_was(
@@ -210,7 +263,7 @@ def test_a_document_that_could_not_be_written_keeps_the_cursor_where_it_was(
     assert not report.succeeded
     assert report.may_advance_cursor is False
     assert library.cursor is None
-    assert "a.md" in library.documents, "the rest of the run still happened"
+    assert "a.md" in library.held, "the rest of the run still happened"
 
 
 def test_a_run_that_recovers_advances_past_the_whole_pass(origin: Origin, mirror: Path):
@@ -223,7 +276,7 @@ def test_a_run_that_recovers_advances_past_the_whole_pass(origin: Origin, mirror
 
     assert report.succeeded
     assert recovered.cursor is not None
-    assert set(recovered.documents) == {"a.md", "b.md"}
+    assert set(recovered.held) == {"a.md", "b.md"}
 
 
 def test_a_pass_cut_short_by_failures_says_it_was_cut_short(
@@ -253,7 +306,7 @@ def test_a_library_that_cannot_be_asked_for_its_cursor_is_not_written_to(
     report = run(origin, mirror, library)
 
     assert [issue.code for issue in report.errors] == ["cursor_not_read"]
-    assert library.documents == {}
+    assert library.held == {}
 
 
 def test_a_repository_that_cannot_be_reached_touches_nothing(tmp_path: Path):
@@ -268,7 +321,7 @@ def test_a_repository_that_cannot_be_reached_touches_nothing(tmp_path: Path):
 
     assert not report.succeeded
     assert [issue.code for issue in report.errors] == ["source_unavailable"]
-    assert library.documents == {}
+    assert library.held == {}
     assert library.cursor is None
 
 
@@ -281,7 +334,7 @@ def test_a_repository_past_the_bound_is_refused_before_anything_is_written(
     report = run(origin, mirror, library, max_files=3)
 
     assert [issue.code for issue in report.errors] == ["library_too_large"]
-    assert library.documents == {}
+    assert library.held == {}
 
 
 @pytest.mark.parametrize("concurrent", [1, 4])
@@ -303,4 +356,4 @@ def test_the_same_run_is_the_same_whatever_the_concurrency(
     source.close()
 
     assert report.written_new == 12
-    assert len(library.documents) == 12
+    assert len(library.held) == 12

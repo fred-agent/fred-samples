@@ -14,13 +14,10 @@
 """
 The library this run writes into, as the synchronization needs to see it.
 
-Four operations, and not one of them names a Fred-side identifier: documents
-are addressed by the key the repository already gives them, and the only thing
-remembered between runs is the cursor, which Fred keeps and never reads.
-
-The implementation over Fred's REST API belongs beside this file once the SDK
-publishes it. Until then this port is what the synchronization is written and
-tested against, and swapping one in changes nothing above it.
+Not one operation names a Fred-side identifier: documents are addressed by
+their path in the library, and the only thing remembered between runs is the
+cursor, which Fred keeps and never reads. The implementation over Fred sits in
+`knowledge_flow.py`; this port is what the synchronization is tested against.
 """
 
 from __future__ import annotations
@@ -46,19 +43,18 @@ class Library(Protocol):
         """Store where this run got to. Kept verbatim, never interpreted."""
         ...
 
+    async def documents(self) -> dict[str, str | None]:
+        """What the library holds, by key, with the version it was written at."""
+        ...
+
     async def write(
-        self,
-        *,
-        source_key: str,
-        path: str,
-        document_version: str,
-        content: bytes,
+        self, *, source_key: str, document_version: str, content: bytes
     ) -> bool:
         """Put one document in the library. True when the key was new to it."""
         ...
 
-    async def remove(self, *, source_key: str) -> bool:
-        """Take one document out. False when the library did not hold it."""
+    async def remove(self, *, source_key: str) -> None:
+        """Take one document out. A key the library does not hold is not an error."""
         ...
 
     async def aclose(self) -> None:
@@ -83,26 +79,23 @@ class LoggingLibrary:
         self.cursor = value
         logger.info("would record cursor %s", value)
 
+    async def documents(self) -> dict[str, str | None]:
+        # Nothing was ever written, so every full pass is a first one.
+        return {}
+
     async def write(
-        self,
-        *,
-        source_key: str,
-        path: str,
-        document_version: str,
-        content: bytes,
+        self, *, source_key: str, document_version: str, content: bytes
     ) -> bool:
         logger.info(
-            "would write %s -> %s (%d bytes, version %s)",
+            "would write %s (%d bytes, version %s)",
             source_key,
-            path,
             len(content),
             document_version[:8],
         )
         return True
 
-    async def remove(self, *, source_key: str) -> bool:
+    async def remove(self, *, source_key: str) -> None:
         logger.info("would remove %s", source_key)
-        return True
 
     async def aclose(self) -> None:
         return None
