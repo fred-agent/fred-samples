@@ -7,10 +7,7 @@ requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
   # The `knowledge-base` extra brings the workflow engine the `run` command
-  # needs; `publish` and the handler itself do not load it. 3.7.0 is not on
-  # PyPI yet, so `make dev` resolves it from the local monorepo checkout below
-  # and `make dev-pypi` fails on purpose rather than installing an SDK without
-  # the surface this sample needs.
+  # needs; `publish` and the handler itself do not load it.
   "fred-sdk[knowledge-base]>=4.0.0",
 ]
 

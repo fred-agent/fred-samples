@@ -143,20 +143,20 @@ Packages resolve `fred-sdk` / `fred-runtime` from a sibling monorepo checkout by
 
 **Every sample here is configured exactly the way a Fred backend is, with no stylistic difference
 whatsoever.** One `configuration.yaml` loaded through `CONFIG_FILE`, the same Pydantic models from
-`fred_core`, the same YAML keys, and environment variables carrying **secrets only**. A sample that
+`fred_pod`, the same YAML keys, and environment variables carrying **secrets only**. A sample that
 configures itself differently teaches a third-party contributor the wrong thing, and a contributor
 who learns a second configuration model is the cost this rule exists to avoid.
 
 Before adding or touching any configuration:
 
-- **Reuse the model, never a parallel one.** `fred_core.security.structure` already has
-  `SecurityConfiguration`, `M2MSecurity`, `UserSecurity`, `RebacConfiguration`;
-  `fred_core.common.structures` has `TemporalSchedulerConfig`, `ModelConfiguration`, the store and
+- **Reuse the model, never a parallel one.** `fred_pod.security.structure` already has
+  `SecurityConfiguration`, `M2MSecurity`, `UserSecurity`, `OpenFgaRebacConfig`;
+  `fred_pod.common.structures` has `TemporalSchedulerConfig`, `ModelConfiguration`, the store and
   KPI sink configs. Keycloak is `security.m2m` with `realm_url`, `client_id`, `secret_env_var` —
   never a hand-rolled trio of environment variables.
 - **Keep the keys identical.** `security.m2m.realm_url`, `scheduler.temporal.host`, and so on. A
   renamed key is a difference of style, and none is accepted.
-- **Load it the shared way** — `fred_core.common.config_loader`, resolved from `CONFIG_FILE` — so
+- **Load it the shared way** — `fred_pod.common.config_loader`, resolved from `CONFIG_FILE` — so
   local development and a Kubernetes Deployment differ only in where the file is mounted, never in
   mechanism.
 - **Environment carries secrets and nothing else.** A non-secret value in an environment variable

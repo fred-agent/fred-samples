@@ -73,7 +73,7 @@ Without it, `make run` stops immediately and tells you exactly that.
 ## What `publish` and `run` actually do
 
 A pod is configured exactly the way every other Fred component is: one
-`configuration.yaml` resolved from `$CONFIG_FILE`, the models `fred_core` owns,
+`configuration.yaml` resolved from `$CONFIG_FILE`, the models `fred_pod` owns,
 and environment variables carrying **secrets only**.
 
 ```
@@ -103,7 +103,7 @@ stays what is deployed.
 queue. It opens no port of its own.
 
 Both authenticate with Fred's own M2M mechanism
-(`fred_core.security.backend_to_backend_auth`, the module the other backends
+(`fred_pod.security.backend_to_backend_auth`, the module the other backends
 use, not a scheme of its own):
 
 ```
@@ -120,8 +120,8 @@ nothing on disk ever holds it.
 ### The queue is derived, never configured
 
 Both the pod and the Control Plane compute it from the definition id with the
-same `fred_core` function, so the dispatching side and the worker side cannot
-disagree by construction:
+same function, `fred_sdk.knowledge_base.routing.task_queue_for`, so the
+dispatching side and the worker side cannot disagree by construction:
 
 ```
 kb__ + fred.samples.webdav  →  kb__fred.samples.webdav

@@ -33,7 +33,7 @@ import logging
 import mimetypes
 
 import httpx
-from fred_core.security.backend_to_backend_auth import M2MTokenProvider
+from fred_pod import M2MTokenProvider
 from fred_sdk.knowledge_base import MissingPodConfiguration
 from fred_sdk.knowledge_base.configuration import PodConfiguration
 
