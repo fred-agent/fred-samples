@@ -150,7 +150,7 @@ who learns a second configuration model is the cost this rule exists to avoid.
 Before adding or touching any configuration:
 
 - **Reuse the model, never a parallel one.** `fred_pod.security.structure` already has
-  `SecurityConfiguration`, `M2MSecurity`, `UserSecurity`, `OpenFgaRebacConfig`;
+  `SecurityConfiguration`, `M2MSecurity`, `UserSecurity`, `RebacConfiguration`;
   `fred_pod.common.structures` has `TemporalSchedulerConfig`, `ModelConfiguration`, the store and
   KPI sink configs. Keycloak is `security.m2m` with `realm_url`, `client_id`, `secret_env_var` —
   never a hand-rolled trio of environment variables.
