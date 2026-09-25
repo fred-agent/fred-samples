@@ -1,0 +1,101 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb
+  # Empty means Chart.appVersion. Override with an immutable digest or tag when
+  # an environment mirrors the image into its own registry.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# This file is mounted as /app/config/configuration.yaml. Keep the key names
+# aligned with the Fred pod configuration models.
+configuration:
+  knowledge_base:
+    prefix: fred.samples
+    control_plane_url: http://control-plane-backend:8222/control-plane/v1
+    knowledge_flow_url: http://knowledge-flow-backend:8000/knowledge-flow/v1
+  security:
+    m2m:
+      enabled: true
+      realm_url: http://keycloak.infra.svc.cluster.local/realms/app
+      client_id: kb-fred.samples
+      secret_env_var: FRED_KB_CLIENT_SECRET
+  scheduler:
+    temporal:
+      host: temporal-frontend.infra.svc.cluster.local:7233
+      namespace: default
+
+# Use exactly one mode:
+# - create=true: the chart creates a Secret from clientSecret;
+# - create=false: the chart references existingSecret.
+# Keep clientSecret in an encrypted values file such as values.sec.yaml.
+m2mSecret:
+  create: false
+  existingSecret: knowledge-base-m2m
+  nameOverride: ""
+  key: client-secret
+  clientSecret: ""
+
+# Optional private CA used only for the connection to the WebDAV server.
+webdavCa:
+  enabled: false
+  configMapName: ""
+  key: corporate-root.pem
+  mountPath: /etc/ssl/private-ca
+  fileName: corporate-root.pem
+
+publish:
+  enabled: true
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 86400
+  podAnnotations: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+strategy:
+  type: Recreate
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+terminationGracePeriodSeconds: 30
+
+extraEnv: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
