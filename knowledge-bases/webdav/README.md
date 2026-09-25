@@ -404,6 +404,7 @@ The image is `ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb`, tagged:
 | Tag | Pushed by | Use it for |
 |---|---|---|
 | `v1.2.3` | the git tag `code/v1.2.3`, which also creates a GitHub release | a Deployment |
+| `latest` | every `code/v*` tag, and it moves | knowing what the newest release is — never a Deployment |
 | `swift-dev-<short sha>` | every push to `swift` | pinning one development build |
 | `swift-dev` | every push to `swift`, and it moves | trying the latest build by hand |
 
