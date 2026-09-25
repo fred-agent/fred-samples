@@ -49,7 +49,7 @@ the difference between a change that gets checked and one that does not.
 | `knowledge-bases/` | Three independent Knowledge Base pods | yes | yes |
 | `servers/mcp/python/` | Five sample MCP servers | **no** — they ship no test suite | **no** |
 | `apps/` | Two sample applications | **no** — see below | **no** |
-| `dockerfiles/` | `Dockerfile` (agents pod), `Dockerfile.webdav-share` | — | — |
+| `dockerfiles/` | `Dockerfile` (agents pod), `Dockerfile.knowledge-base` (the three Knowledge Base pods), `Dockerfile.webdav-share` (a test fixture) | — | — |
 
 The root `Makefile` fans out to exactly four packages: `agents`, `knowledge-bases/local-folder`,
 `knowledge-bases/git-repository`, `knowledge-bases/webdav`. `.pre-commit-config.yaml` matches
@@ -74,6 +74,16 @@ It currently requires `fred-sdk>=3.4.1` and `fred-runtime>=3.4.2`.
 Three standalone pods — `local-folder`, `git-repository`, `webdav` — each a package in its own
 right with its own Makefile, venv, baselines and `config/`. A Knowledge Base pod publishes a
 declaration to Fred and then serves runs; it opens no inbound port.
+
+### Published images
+
+`.github/workflows/Build-and-push-docker.yml` is the only CI workflow. It publishes the Knowledge
+Base images in its matrix — today only `fred-samples-webdav-kb` — to
+`ghcr.io/fred-agent/fred-samples/`, after `UV_NO_SOURCES=1 make test`, a build and
+`make docker-smoke`. A git tag `code/v1.2.3` publishes image tag `v1.2.3` and creates a GitHub
+release; a push to `swift` publishes `swift-dev` and `swift-dev-<short sha>`. Tags and the release
+command are documented in `dockerfiles/README.md`. Do not create a release tag unless asked: it
+publishes an image other people deploy.
 
 ### `apps/`
 

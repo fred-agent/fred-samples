@@ -391,29 +391,13 @@ make docker-sync URL=https://share.example.com/documents/   # dry-run a share fr
 make docker-push                       # push to ghcr.io (docker login first)
 ```
 
-CI — `.github/workflows/Build-and-push-docker.yml` — runs `make test`, builds
-the image, runs `make docker-smoke` against it, and only then pushes. It pushes
-on the `swift` branch and on a `code/v*` tag; a pull request runs the same checks
-and pushes nothing. It resolves `fred-sdk` from PyPI rather than from a sibling
-monorepo checkout (`UV_NO_SOURCES=1` for the tests, `--no-sources` in the
-Dockerfile), so a plain clone of this repository is all a runner needs.
-Reproduce the tests the way CI runs them with `UV_NO_SOURCES=1 make test`.
-
-The image is `ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb`, tagged:
-
-| Tag | Pushed by | Use it for |
-|---|---|---|
-| `v1.2.3` | the git tag `code/v1.2.3`, which also creates a GitHub release | a Deployment |
-| `latest` | every `code/v*` tag, and it moves | knowing what the newest release is — never a Deployment |
-| `swift-dev-<short sha>` | every push to `swift` | pinning one development build |
-| `swift-dev` | every push to `swift`, and it moves | trying the latest build by hand |
-
-The same triggers and tags as the Fred repository's own images. To release:
-
-```bash
-git tag code/v1.2.3
-git push origin code/v1.2.3
-```
+CI publishes this image as `ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb`.
+A release is a git tag `code/v1.2.3`, which pushes the image tag `v1.2.3` — the
+one to give a Deployment. What CI checks before pushing, every tag it pushes
+and how to cut a release are in
+[`dockerfiles/README.md`](../../dockerfiles/README.md#publishing-images).
+Reproduce CI's tests locally with `UV_NO_SOURCES=1 make test`: it resolves
+`fred-sdk` from PyPI, as the image does, rather than from a sibling monorepo.
 
 The image runs as uid 1000, opens **no port**, and offers the SDK's two
 commands. A deployment runs `publish` once, then `run`:

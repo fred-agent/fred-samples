@@ -397,6 +397,10 @@ For container build/run/push workflows, see:
 
 - `dockerfiles/README.md`
 
+Images are published to `ghcr.io/fred-agent/fred-samples/` by CI. A release is
+a git tag `code/v1.2.3`, which publishes image tag `v1.2.3` — see
+"Publishing images" in `dockerfiles/README.md`.
+
 ---
 
 ## Learn more
