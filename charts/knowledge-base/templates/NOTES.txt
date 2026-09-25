@@ -1,0 +1,14 @@
+The WebDAV Knowledge Base worker is deployed without a Service because it opens
+no inbound port. It receives synchronization work through Temporal.
+
+Worker status:
+  kubectl -n {{ .Release.Namespace }} get deployment {{ include "knowledge-base.fullname" . }}
+
+Worker logs:
+  kubectl -n {{ .Release.Namespace }} logs deployment/{{ include "knowledge-base.fullname" . }}
+
+The declaration is published by the post-install/post-upgrade/post-rollback hook Job:
+  kubectl -n {{ .Release.Namespace }} get job {{ include "knowledge-base.fullname" . }}-publish
+
+M2M client Secret used by both workloads:
+  {{ include "knowledge-base.m2mSecretName" . }}

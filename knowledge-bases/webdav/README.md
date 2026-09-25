@@ -384,6 +384,13 @@ The pod ships as an image built from
 [`dockerfiles/Dockerfile.knowledge-base`](../../dockerfiles/Dockerfile.knowledge-base),
 shared by the three Knowledge Base samples.
 
+The matching Kubernetes deployment is
+[`charts/knowledge-base`](../../charts/knowledge-base/). Releases
+are published as the OCI chart
+`oci://ghcr.io/fred-agent/fred-samples/charts/knowledge-base`; deployment
+repositories keep only their environment-specific values and consume a pinned
+chart version.
+
 ```bash
 make docker-build                      # build it
 make docker-smoke                      # check it offline: entry point, declaration, imports, no .env inside

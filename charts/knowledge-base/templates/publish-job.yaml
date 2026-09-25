@@ -1,0 +1,99 @@
+{{- if .Values.publish.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "knowledge-base.fullname" . }}-publish
+  labels:
+    {{- include "knowledge-base.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade,post-rollback
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: {{ .Values.publish.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.publish.activeDeadlineSeconds }}
+  {{- with .Values.publish.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ . }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "knowledge-base.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: knowledge-base-publisher
+      {{- with .Values.publish.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: publish
+          image: {{ include "knowledge-base.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - publish
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: CONFIG_FILE
+              value: /app/config/configuration.yaml
+            - name: {{ include "knowledge-base.secretEnvName" . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "knowledge-base.m2mSecretName" . | quote }}
+                  key: {{ required "m2mSecret.key is required" .Values.m2mSecret.key | quote }}
+            {{- if .Values.webdavCa.enabled }}
+            - name: FRED_SAMPLES_WEBDAV_CA_FILE
+              value: {{ printf "%s/%s" (.Values.webdavCa.mountPath | trimSuffix "/") .Values.webdavCa.fileName | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.publish.resources | nindent 12 }}
+          volumeMounts:
+            - name: configuration
+              mountPath: /app/config/configuration.yaml
+              subPath: configuration.yaml
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.webdavCa.enabled }}
+            - name: webdav-ca
+              mountPath: {{ .Values.webdavCa.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: configuration
+          configMap:
+            name: {{ include "knowledge-base.configMapName" . }}
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.webdavCa.enabled }}
+        - name: webdav-ca
+          configMap:
+            name: {{ required "webdavCa.configMapName is required when webdavCa.enabled=true" .Values.webdavCa.configMapName | quote }}
+            items:
+              - key: {{ .Values.webdavCa.key | quote }}
+                path: {{ .Values.webdavCa.fileName | quote }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

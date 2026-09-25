@@ -277,6 +277,11 @@ Requires: a reachable WebDAV share — no model, no MCP server, no cluster
 
 **Sample docs:** [README.md](knowledge-bases/webdav/README.md)
 
+**Kubernetes deployment:**
+[`charts/knowledge-base/`](charts/knowledge-base/) — published as
+an OCI Helm chart on GHCR for deployment repositories to consume with their
+own environment-specific values.
+
 ```bash
 cd knowledge-bases/webdav
 make share-run                            # a real Apache mod_dav share, in a container

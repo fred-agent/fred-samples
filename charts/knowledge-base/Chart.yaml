@@ -1,0 +1,8 @@
+apiVersion: v2
+name: knowledge-base
+description: Deploy a Fred Knowledge Base worker and publish its declaration
+type: application
+version: 0.1.0
+appVersion: "v0.1.0"
+sources:
+  - https://github.com/fred-agent/fred-samples

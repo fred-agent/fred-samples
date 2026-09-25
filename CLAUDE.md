@@ -40,7 +40,7 @@ something that can.
 
 ## Repository map
 
-Five areas, and **three different validation regimes**. Knowing which regime an area is in is
+Six areas, and **four different validation regimes**. Knowing which regime an area is in is
 the difference between a change that gets checked and one that does not.
 
 | Path | What it holds | `make test` / `make code-quality` from the root | pre-commit |
@@ -50,6 +50,7 @@ the difference between a change that gets checked and one that does not.
 | `servers/mcp/python/` | Five sample MCP servers | **no** — they ship no test suite | **no** |
 | `apps/` | Two sample applications | **no** — see below | **no** |
 | `dockerfiles/` | `Dockerfile` (agents pod), `Dockerfile.knowledge-base` (the three Knowledge Base pods), `Dockerfile.webdav-share` (a test fixture) | — | — |
+| `charts/` | Helm charts for deployable samples | **no** — validated by Helm in GitHub Actions | **no** |
 
 The root `Makefile` fans out to exactly four packages: `agents`, `knowledge-bases/local-folder`,
 `knowledge-bases/git-repository`, `knowledge-bases/webdav`. `.pre-commit-config.yaml` matches
