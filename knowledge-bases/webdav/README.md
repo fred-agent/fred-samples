@@ -175,9 +175,9 @@ make sync URL=https://share.example.com/documents/ WEBDAV_USER=reader
 
 For a local run, use `make sync URL=... LIBRARY=... PROFILE=rich`
 (or `make watch` with the same arguments). The CLI also accepts `--profile rich`.
-An omitted or cleared instance field uses `medium`. This sample needs the local
-SDK with the `publish(profile=...)` argument; that addition is not yet a published
-version requirement. Re-publish the KB declaration to expose the field in Fred.
+An omitted or cleared instance field uses `medium`. `DocumentPublisher.publish`
+takes `profile=` from `fred-sdk` 4.1.0, the floor in `pyproject.toml`.
+Re-publish the KB declaration to expose the field in Fred.
 Changing the profile applies to subsequent writes; it does not re-ingest unchanged
 documents already present in the library.
 
@@ -386,14 +386,26 @@ shared by the three Knowledge Base samples.
 
 ```bash
 make docker-build                      # build it
+make docker-smoke                      # check it offline: entry point, declaration, imports, no .env inside
 make docker-sync URL=https://share.example.com/documents/   # dry-run a share from inside it
 make docker-push                       # push to ghcr.io (docker login first)
 ```
 
-CI builds and pushes the same image on the default branch and on a `v*` tag —
-`.github/workflows/Build-and-push-docker.yml`. It resolves `fred-sdk` from PyPI
-rather than from a sibling monorepo checkout, so a plain clone of this
-repository is all a runner needs.
+CI — `.github/workflows/Build-and-push-docker.yml` — runs `make test`, builds
+the image, runs `make docker-smoke` against it, and only then pushes. It pushes
+on the `swift` branch and on a `v*` tag; a pull request runs the same checks
+and pushes nothing. It resolves `fred-sdk` from PyPI rather than from a sibling
+monorepo checkout (`UV_NO_SOURCES=1` for the tests, `--no-sources` in the
+Dockerfile), so a plain clone of this repository is all a runner needs.
+Reproduce the tests the way CI runs them with `UV_NO_SOURCES=1 make test`.
+
+The image is `ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb`, tagged:
+
+| Tag | Moves? | Use it for |
+|---|---|---|
+| `sha-<full commit sha>` | never | a Deployment — it names exactly one build |
+| `<x.y.z>`, `<x.y>` | from a `v*` git tag | a released version |
+| `swift` | on every push to the branch | trying the latest build by hand |
 
 The image runs as uid 1000, opens **no port**, and offers the SDK's two
 commands. A deployment runs `publish` once, then `run`:
@@ -403,11 +415,17 @@ docker run --rm <image> publish   # declare this Knowledge Base to Fred
 docker run --rm <image>           # `run` is the default: serve dispatched runs
 ```
 
-Two things a Deployment has to get right:
+`publish` fits an init container or a Job. It is a `PUT` of the declaration,
+so running it on every rollout is fine.
+
+What a Deployment has to get right:
 
 | What | Why |
 |---|---|
-| Mount a ConfigMap over `/app/config/configuration.yaml` | `$CONFIG_FILE` resolves there from the working directory. The shipped file points at `localhost` and is a shape to copy, not a deployment. |
+| Mount a ConfigMap over `/app/config/configuration.yaml` | `$CONFIG_FILE` resolves there from the working directory. The shipped file points at `localhost` and is a shape to copy, not a deployment: `control_plane_url`, `knowledge_flow_url`, `security.m2m.realm_url` and `scheduler.temporal.host` must name the cluster's services. |
+| Set `FRED_KB_CLIENT_SECRET` from a Secret | The confidential client's secret, and the only value the pod takes from its environment. Its name is whatever `security.m2m.secret_env_var` says. No `.env` file is needed in a cluster. |
+| Reach Keycloak, the Control Plane, Knowledge Flow, Temporal and the share | The pod opens no port but makes outbound calls to all five. |
+| No volume | This sample keeps no state between runs — the library is the record, see "What a run does". |
 | Check `$FRED_SAMPLES_WEBDAV_CA_FILE` | It defaults to the image's own bundle, `/etc/ssl/certs/ca-certificates.crt`, so a root the cluster injects into the container's system store is trusted with no further configuration. Point it at a mounted PEM instead when the root comes from a ConfigMap, per the section above. |
 
 To find out which of those a share needs before deploying anything, run the

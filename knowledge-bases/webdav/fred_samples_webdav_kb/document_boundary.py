@@ -98,10 +98,13 @@ class _KnowledgeFlowBoundary:
     """
 
     def __init__(
-        self, publisher: DocumentPublisher, *, profile: IngestionProfile = DEFAULT_PROFILE
+        self,
+        publisher: DocumentPublisher,
+        *,
+        profile: IngestionProfile = DEFAULT_PROFILE,
     ) -> None:
         self._publisher = publisher
-        self._profile = profile
+        self._profile: IngestionProfile = profile
 
     async def publish(
         self, *, relative_path: str, content: bytes, version: str

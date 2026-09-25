@@ -154,7 +154,9 @@ async def test_an_empty_version_is_offered_as_none_at_all():
 @pytest.mark.parametrize("profile", ["fast", "medium", "rich"])
 async def test_the_selected_profile_reaches_the_publisher(profile: IngestionProfile):
     publisher = FakePublisher(landed())
-    boundary = _KnowledgeFlowBoundary(cast(DocumentPublisher, publisher), profile=profile)
+    boundary = _KnowledgeFlowBoundary(
+        cast(DocumentPublisher, publisher), profile=profile
+    )
 
     await boundary.publish(relative_path="a.md", content=b"a", version="v1")
 

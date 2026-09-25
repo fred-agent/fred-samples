@@ -68,7 +68,4 @@ asyncio_mode = "auto"
 # Local path override for this monorepo's own fred-sdk, sibling to this repo
 # under ~/Fred — the same convention as the samples beside it. Comment out to
 # force PyPI resolution, or use `make dev-pypi`.
-# TEMPORARY E2E OVERRIDE — both lines point at the feature worktree; before commit,
-# revert to the single line `fred-sdk = { path = "../../../fred/libs/fred-sdk", editable = true }`.
-fred-sdk = { path = "../../../features/webdav/libs/fred-sdk", editable = true }
-fred-pod = { path = "../../../features/webdav/libs/fred-pod", editable = true }
+fred-sdk = { path = "../../../fred/libs/fred-sdk", editable = true }

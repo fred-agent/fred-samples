@@ -185,6 +185,20 @@ docker-build: ## Build the deployable image for this Knowledge Base pod
 		-t $(DOCKER_IMAGE) \
 		$(DOCKER_CONTEXT)
 
+# What CI runs between building the image and pushing it. With no network at
+# all: the SDK's entry point loads this Knowledge Base, the declaration it would
+# publish can be projected, the `run` path imports its workflow engine, and no
+# secrets file reached the image.
+.PHONY: docker-smoke
+docker-smoke: ## Check the built image offline before pushing it
+	docker run --rm --network none $(DOCKER_IMAGE) --help >/dev/null
+	docker run --rm --network none --entrypoint $(CLI) $(DOCKER_IMAGE) declaration >/dev/null
+	docker run --rm --network none --entrypoint python $(DOCKER_IMAGE) \
+		-c "import $(PY_PACKAGE).document_boundary, temporalio"
+	docker run --rm --network none --entrypoint sh $(DOCKER_IMAGE) \
+		-c 'test ! -e /app/config/.env || { echo "config/.env is in the image"; exit 1; }'
+	@echo "Image $(DOCKER_IMAGE) passed the offline smoke test."
+
 .PHONY: docker-push
 docker-push: ## Push the image (docker login ghcr.io first)
 	docker push $(DOCKER_IMAGE)
