@@ -1,5 +1,9 @@
-# Builds the Knowledge Base pod images and, on the default branch or a tag,
-# pushes them to this repository's own GitHub container registry.
+# Builds the Knowledge Base pod images and pushes them to this repository's own
+# GitHub container registry, with the same triggers and tags as the Fred
+# repository's own images:
+#
+#   git tag code/v1.2.3 && git push origin code/v1.2.3   ->  :v1.2.3, plus a GitHub release
+#   a push to swift                                       ->  :swift-dev and :swift-dev-<short sha>
 #
 # Nothing is pushed that has not passed, in this order: the sample's offline
 # test suite, a build, and `make docker-smoke` against the image just built.
@@ -16,9 +20,8 @@ name: Build and Push Docker Images
 on:
   push:
     branches: ["swift"]
-    tags: ["v*"]
+    tags: ["code/v*"]
   pull_request:
-  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -73,8 +76,12 @@ jobs:
             KB_PACKAGE=${{ matrix.package }}
           load: true
           tags: ${{ matrix.image }}:smoke
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # A pull request reads and writes the Actions cache to stay
+          # affordable. The publish path stays uncached, as in the Fred
+          # repository, so a pushed image never reuses layers built from an
+          # unmerged branch.
+          cache-from: ${{ github.event_name == 'pull_request' && 'type=gha' || '' }}
+          cache-to: ${{ github.event_name == 'pull_request' && 'type=gha,mode=max' || '' }}
 
       - name: Smoke-test the image
         run: make -C knowledge-bases/${{ matrix.kb }} docker-smoke DOCKER_IMAGE=${{ matrix.image }}:smoke
@@ -91,19 +98,19 @@ jobs:
 
       - name: Work out the tags
         id: meta
+        if: github.event_name != 'pull_request'
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=long
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=match,enable=${{ startsWith(github.ref, 'refs/tags/code/v') }},pattern=code/(v.*),group=1
+            type=raw,enable=${{ github.ref == 'refs/heads/swift' }},value=swift-dev
+            type=sha,enable=${{ github.ref == 'refs/heads/swift' }},prefix=swift-dev-,format=short
 
       - name: Push
-        # The same build inputs as above, so every layer comes from the cache:
-        # what is pushed is the image that was just smoke-tested.
+        # The same build inputs as above, in the same builder, so every layer
+        # comes from the step before: what is pushed is the image that was just
+        # smoke-tested.
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v7
         with:
@@ -116,4 +123,31 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
+
+  create-release:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/code/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Extract the version
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: dummy # only the version is wanted, not an image name
+          tags: |
+            type=match,pattern=code/(v.*),group=1
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.meta.outputs.version }}
+          body: |
+            # images:
+            ```
+            oci://${{ env.REGISTRY }}/${{ github.repository }}/fred-samples-webdav-kb:${{ steps.meta.outputs.version }}
+            ```
+          draft: false
+          prerelease: false

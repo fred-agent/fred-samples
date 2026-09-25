@@ -393,7 +393,7 @@ make docker-push                       # push to ghcr.io (docker login first)
 
 CI — `.github/workflows/Build-and-push-docker.yml` — runs `make test`, builds
 the image, runs `make docker-smoke` against it, and only then pushes. It pushes
-on the `swift` branch and on a `v*` tag; a pull request runs the same checks
+on the `swift` branch and on a `code/v*` tag; a pull request runs the same checks
 and pushes nothing. It resolves `fred-sdk` from PyPI rather than from a sibling
 monorepo checkout (`UV_NO_SOURCES=1` for the tests, `--no-sources` in the
 Dockerfile), so a plain clone of this repository is all a runner needs.
@@ -401,11 +401,18 @@ Reproduce the tests the way CI runs them with `UV_NO_SOURCES=1 make test`.
 
 The image is `ghcr.io/fred-agent/fred-samples/fred-samples-webdav-kb`, tagged:
 
-| Tag | Moves? | Use it for |
+| Tag | Pushed by | Use it for |
 |---|---|---|
-| `sha-<full commit sha>` | never | a Deployment — it names exactly one build |
-| `<x.y.z>`, `<x.y>` | from a `v*` git tag | a released version |
-| `swift` | on every push to the branch | trying the latest build by hand |
+| `v1.2.3` | the git tag `code/v1.2.3`, which also creates a GitHub release | a Deployment |
+| `swift-dev-<short sha>` | every push to `swift` | pinning one development build |
+| `swift-dev` | every push to `swift`, and it moves | trying the latest build by hand |
+
+The same triggers and tags as the Fred repository's own images. To release:
+
+```bash
+git tag code/v1.2.3
+git push origin code/v1.2.3
+```
 
 The image runs as uid 1000, opens **no port**, and offers the SDK's two
 commands. A deployment runs `publish` once, then `run`:
