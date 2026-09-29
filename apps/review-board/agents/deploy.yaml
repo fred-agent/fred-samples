@@ -1,0 +1,241 @@
+# Agents runtime for the review-board application.
+#
+# One runtime per application: each gets its own namespace, base path and MCP
+# catalog, so an application can be deployed or removed without touching the
+# others.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit the values marked EDIT below. They hold a
+# local Fred install's defaults; FRED_HOST stands for the address the browser
+# reaches Fred on.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: review-board-agents-config
+  namespace: review-board
+  labels:
+    app: review-board-agents
+data:
+  configuration.yaml: |
+    app:
+      name: Review Board Agents
+      runtime_id: review-board-agents
+      base_url: /agents/review-board/v1
+      host: 0.0.0.0
+      port: 8010
+      log_level: info
+    security:
+      authorized_origins:
+        # EDIT: the origin the browser loads Fred from.
+        - http://FRED_HOST:8088
+      m2m:
+        enabled: true
+        # EDIT: this runtime's own workload client, and the realm that mints
+        # its token.
+        client_id: agentic
+        realm_url: http://keycloak.fred.svc.cluster.local:8080/realms/app
+        secret_env_var: KEYCLOAK_AGENTIC_CLIENT_SECRET  # pragma: allowlist secret
+      user:
+        enabled: true
+        # EDIT: the client people sign in through, and the browser token's issuer
+        # exactly - the host address rather than the in-cluster name.
+        client_id: app
+        realm_url: http://FRED_HOST:8080/realms/app
+      rebac:
+        enabled: true
+        type: openfga
+        # EDIT: fully qualified address of Fred's existing OpenFGA.
+        api_url: http://openfga.fred.svc.cluster.local:9080
+        # Reader mode: the control plane owns the store and the authorization model.
+        create_store_if_needed: false
+        sync_schema_on_init: false
+    ai:
+      # EDIT: Fred's Knowledge Flow.
+      knowledge_flow_url: http://knowledge-flow-backend.fred.svc.cluster.local:8000/knowledge-flow/v1
+      timeout:
+        connect: 20
+        read: 60
+    observability:
+      tracer: logging
+      kpi:
+        log:
+          enabled: true
+        prometheus:
+          enabled: false
+        opensearch:
+          enabled: false
+    storage:
+      postgres:
+        # EDIT: Fred's already-migrated database; this runtime never migrates it.
+        database: fred
+        host: postgres.fred.svc.cluster.local
+        port: 5432
+        username: fred
+        pool_size: 2
+        max_overflow: 0
+        pool_pre_ping: true
+        pool_recycle: 1800
+        pool_timeout: 30
+      log_store:
+        type: in_memory
+    scheduler:
+      enabled: false
+    platform:
+      # EDIT: Fred's control plane.
+      control_plane_url: http://control-plane-backend.fred.svc.cluster.local:8222/control-plane/v1
+
+  models_catalog.yaml: |
+    version: v1
+    common_model_settings:
+      http_client_limits:
+        keepalive_expiry_seconds: 10
+        max_connections: 500
+        max_keepalive_connections: 200
+      max_retries: 0
+      temperature: 0
+      timeout:
+        connect: 10
+        pool: 5
+        read: 610
+        write: 30
+    default_profile_by_capability:
+      chat: default.chat.ollama
+    profiles:
+      - profile_id: default.chat.ollama
+        capability: chat
+        model_display_name: Qwen 2.5 7B Instruct (local)
+        model:
+          provider: ollama
+          # EDIT: an instruct model your Ollama serves that honours the response
+          # format on the chat endpoint. A thinking model answers the review
+          # steps in prose there, whatever schema it is given.
+          name: qwen2.5:7b-instruct
+          settings:
+            # EDIT: the Ollama endpoint reachable from this pod.
+            base_url: http://host.k3d.internal:11434
+            num_ctx: 16384
+
+  mcp_catalog.yaml: |
+    version: v1
+    servers:
+      - id: "mcp-review-board"
+        name: "Review Board"
+        description: "Team-scoped review-board records, written with the caller's bearer"
+        enabled: true
+        transport: "streamable_http"
+        url: "http://review-board-api.review-board.svc.cluster.local:8000/mcp"
+        sse_read_timeout: 5000
+        auth_mode: "delegated"
+        team_scope: "admin_gated"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-board-agents
+  namespace: review-board
+  labels:
+    app: review-board-agents
+spec:
+  # One by default, so this sample's agents are selectable once deployed. Each
+  # runtime is a full Fred runtime; scale the others down if capacity is short.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: review-board-agents
+  template:
+    metadata:
+      labels:
+        app: review-board-agents
+    spec:
+      containers:
+        - name: agents
+          image: review-board-agents:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8010
+          env:
+            - name: CONFIG_FILE
+              value: /app/config/configuration.yaml
+            - name: FRED_MODELS_CATALOG_FILE
+              value: /app/config/models_catalog.yaml
+            - name: FRED_MCP_CATALOG_FILE
+              value: /app/config/mcp_catalog.yaml
+            # One runtime per application: the shared image carries every
+            # sample's agents, so advertise only this application's.
+            - name: FRED_SAMPLES_AGENTS
+              value: document_review
+            - name: KEYCLOAK_AGENTIC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-agents-env
+                  key: KEYCLOAK_AGENTIC_CLIENT_SECRET
+            - name: FRED_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-agents-env
+                  key: POSTGRES_PASSWORD
+            - name: OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-agents-env
+                  key: OPENFGA_API_TOKEN
+          readinessProbe:
+            tcpSocket:
+              port: 8010
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8010
+            periodSeconds: 10
+            failureThreshold: 10
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/configuration.yaml
+              subPath: configuration.yaml
+            - name: config
+              mountPath: /app/config/models_catalog.yaml
+              subPath: models_catalog.yaml
+            - name: config
+              mountPath: /app/config/mcp_catalog.yaml
+              subPath: mcp_catalog.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: review-board-agents-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-board-agents
+  namespace: review-board
+  labels:
+    app: review-board-agents
+spec:
+  selector:
+    app: review-board-agents
+  ports:
+    - name: http
+      port: 8010
+      targetPort: 8010
+---
+# The Ingress must live in the application's namespace: a frontend Ingress
+# cannot target a Service in another namespace.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: review-board-agents
+  namespace: review-board
+spec:
+  # EDIT: your cluster's ingress class.
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /agents/review-board/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: review-board-agents
+                port:
+                  number: 8010

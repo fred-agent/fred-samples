@@ -1,0 +1,10 @@
+{
+  "name": "document-triage-ui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Static frame for the document-triage sample, styled and wired with Fred's published frontend packages.",
+  "dependencies": {
+    "@fred-oss/design-tokens": "0.1.0-alpha.1",
+    "@fred-oss/iframe-sdk": "0.1.0-alpha.3"
+  }
+}

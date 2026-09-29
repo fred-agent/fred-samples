@@ -1,50 +1,78 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
     <title>Progress Tracker</title>
+    <script>
+      // Fred keys its palette off [data-theme] on <html>. The host sends the
+      // user's choice in its context, but not before this page paints, so the OS
+      // preference stands in until it arrives and remains the answer for a host
+      // too old to send one. Inline and blocking on purpose: a deferred script
+      // would paint the light palette first and flash.
+      window.fredTheme = (() => {
+        const os = matchMedia("(prefers-color-scheme: dark)");
+        let fromHost = null;
+        const apply = () =>
+          document.documentElement.setAttribute(
+            "data-theme", fromHost ?? (os.matches ? "dark" : "light"));
+        os.addEventListener("change", apply);
+        apply();
+        return (theme) => { fromHost = theme ?? null; apply(); };
+      })();
+    </script>
+    <!-- The iframe src has no trailing slash, so a relative URL would resolve
+         one directory too high. This pins every relative URL below, the module
+         import included, to the prefix nginx serves this page at. -->
+    <base href="/apps/progress-tracker/" />
+    <link rel="stylesheet" href="fred-tokens.css" />
     <style>
-      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-      body { margin: 0; padding: 20px; background: transparent; }
+      /* Colours and radii come from @fred-oss/design-tokens, so this frame
+         tracks Fred's palette in both themes instead of guessing at it. */
+      :root { font-family: system-ui, sans-serif; }
+      body { margin: 0; padding: 20px; background: transparent; color: var(--on-surface); }
       h1 { font-size: 1.15rem; margin: 0 0 2px; }
-      .sub { color: #777; font-size: 0.82rem; margin-bottom: 16px; }
+      .sub { color: var(--on-surface-muted); font-size: 0.82rem; margin-bottom: 16px; }
       form { display: flex; gap: 8px; margin-bottom: 16px; }
-      input { flex: 1; padding: 7px 10px; border: 1px solid #8884; border-radius: 6px;
-              background: transparent; color: inherit; font: inherit; }
-      button { padding: 7px 14px; border: 0; border-radius: 6px; background: #2563eb;
-               color: #fff; font: inherit; cursor: pointer; }
+      input { flex: 1; padding: 7px 10px; border: 1px solid var(--outline-variant);
+              border-radius: var(--radius-s); background: transparent; color: inherit; font: inherit; }
+      button { padding: 7px 14px; border: 0; border-radius: var(--radius-s);
+               background: var(--primary); color: var(--on-primary); font: inherit; cursor: pointer; }
       .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-      .stat { flex: 1 1 110px; border: 1px solid #8883; border-radius: 8px; padding: 9px 12px; }
+      .stat { flex: 1 1 110px; border: 1px solid var(--outline-muted);
+              border-radius: var(--radius-s); padding: 9px 12px; }
       .stat .n { font-size: 1.3rem; font-weight: 650; font-variant-numeric: tabular-nums; }
-      .stat .k { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
-      .task { border: 1px solid #8883; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
-              cursor: pointer; }
-      .task:hover { border-color: #2563eb88; }
+      .stat .k { font-size: 0.72rem; color: var(--on-surface-muted); text-transform: uppercase;
+                 letter-spacing: 0.04em; }
+      .task { border: 1px solid var(--outline-muted); border-radius: var(--radius-s);
+              padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+      .task:hover { border-color: var(--primary); }
       .row { display: flex; align-items: baseline; gap: 10px; }
-      .handle { font-family: ui-monospace, monospace; font-size: 0.8rem; color: #2563eb; }
+      .handle { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--primary); }
       .title { font-weight: 600; }
-      .pill { margin-left: auto; font-size: 0.72rem; padding: 2px 9px; border-radius: 999px; }
-      .open { background: #64748b22; color: #64748b; }
-      .decided { background: #16a34a22; color: #16a34a; }
-      .meta { font-size: 0.76rem; color: #888; margin-top: 6px; }
-      .back { background: none; color: #2563eb; padding: 0; margin-bottom: 12px; font-size: 0.85rem; }
+      .pill { margin-left: auto; font-size: 0.72rem; padding: 2px 9px; border-radius: var(--radius-full); }
+      .open { background: var(--secondary-container); color: var(--on-secondary-container); }
+      .decided { background: var(--success-container); color: var(--on-success-container); }
+      .meta { font-size: 0.76rem; color: var(--on-surface-muted); margin-top: 6px; }
+      .back { background: none; color: var(--primary); padding: 0; margin-bottom: 12px; font-size: 0.85rem; }
       .discuss { margin-left: auto; font-size: 0.8rem; padding: 5px 12px; }
-      .hint { color: #16a34a; font-size: 0.8rem; margin-top: 8px; }
-      .entry { border-left: 2px solid #8884; padding: 2px 0 2px 12px; margin-bottom: 12px; }
-      .entry.agent { border-left-color: #2563eb; }
-      .who { font-size: 0.72rem; color: #888; margin-bottom: 2px; }
-      .who .tag { color: #2563eb; font-weight: 600; }
-      .q { color: #888; }
-      .sid { font-family: ui-monospace, monospace; font-size: 0.68rem; color: #aaa; }
+      .hint { color: var(--success); font-size: 0.8rem; margin-top: 8px; }
+      .entry { border-left: 2px solid var(--outline-variant); padding: 2px 0 2px 12px; margin-bottom: 12px; }
+      .entry.agent { border-left-color: var(--primary); }
+      .who { font-size: 0.72rem; color: var(--on-surface-muted); margin-bottom: 2px; }
+      .who .tag { color: var(--primary); font-weight: 600; }
+      .q { color: var(--on-surface-muted); }
+      .sid { font-family: ui-monospace, monospace; font-size: 0.68rem; color: var(--on-surface-retreat); }
       h2 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em;
-           color: #888; margin: 22px 0 10px; font-weight: 600; }
-      .convo { border: 1px solid #8883; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+           color: var(--on-surface-muted); margin: 22px 0 10px; font-weight: 600; }
+      .convo { border: 1px solid var(--outline-muted); border-radius: var(--radius-s);
+               padding: 10px 12px; margin-bottom: 10px; }
       .msg { margin-bottom: 9px; font-size: 0.86rem; white-space: pre-wrap; }
       .msg .role { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
-                   color: #888; display: block; margin-bottom: 1px; }
-      .msg.assistant .role { color: #2563eb; }
-      #err { color: #dc2626; font-size: 0.85rem; }
-      .empty { color: #888; font-size: 0.88rem; }
+                   color: var(--on-surface-muted); display: block; margin-bottom: 1px; }
+      .msg.assistant .role { color: var(--primary); }
+      #err { color: var(--error); font-size: 0.85rem; }
+      .empty { color: var(--on-surface-muted); font-size: 0.88rem; }
     </style>
   </head>
   <body>
@@ -58,68 +86,50 @@
     <div id="err"></div>
     <div id="view"></div>
 
-    <script>
-      // Frame side of the Fred application protocol. This page holds no token
-      // and names no upstream: every call is asked of the host, which attaches
-      // the caller's bearer and routes to this application's own service.
-      const PROTOCOL_VERSION = "1";
-      const pending = new Map();
-      let seq = 0;
+    <script type="module">
+      // Frame side of the Fred application protocol, spoken through Fred's own
+      // published client. This page holds no token and names no upstream: every
+      // call is asked of the host, which attaches the caller's bearer and routes
+      // to this application's own service.
+      import { createFredApplicationClient } from "./fred-iframe-sdk.js";
+
+      // The host origin is deployment configuration, not something to infer from
+      // a message or the referrer. Fred serves this frame through its own gateway
+      // under /apps/progress-tracker, so the frame's origin is the host's. An
+      // absolute-URL deployment on a separate origin must set this explicitly.
+      const clientOptions = {
+        hostOrigin: window.location.origin,
+        applicationId: "progress-tracker",
+        connectionTimeoutMs: 15000,
+        requestTimeoutMs: 15000,
+      };
+
+      let client = null;
       let teamId = null;
       let openHandle = null;   // null = list view, otherwise the task being read
 
-      const post = (msg) => parent.postMessage(msg, "*");
       const esc = (s) =>
         String(s ?? "").replace(/[&<>"']/g, (c) =>
           ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
       // The host prefixes /app-services/<app>/teams/<team> itself, so a path
-      // here is relative to that root — never repeat the team segment.
-      function hostFetch(path, init = {}) {
-        // A fresh id per request: the host bounds concurrency per id, and
-        // reusing one would collide with a request still in flight.
-        const requestId = `r${++seq}`;
-        post({
-          type: "fred:request",
-          requestId,
-          path,
-          method: init.method || "GET",
-          headers: init.body ? { "content-type": "application/json" } : {},
-          body: init.body || null,
+      // here is relative to that root — never repeat the team segment. The client
+      // resolves any status, so a failed call is this app's own to detect.
+      async function hostFetch(path, init = {}) {
+        // Every body here is JSON and nothing downstream says so: the client
+        // sends the headers it is given, and a fetch with an undeclared string
+        // body is tagged as plain text, which the API rejects.
+        const response = await client.request(path, {
+          ...init,
+          headers: init.body ? { "content-type": "application/json", ...init.headers } : init.headers,
         });
-        return new Promise((resolve, reject) => {
-          pending.set(requestId, { resolve, reject });
-          setTimeout(() => {
-            if (pending.delete(requestId)) reject(new Error("timed out"));
-          }, 15000);
-        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const body = await response.text();
+        try { return body ? JSON.parse(body) : null; }
+        catch { throw new Error("bad JSON"); }
       }
 
-      window.addEventListener("message", (event) => {
-        const m = event.data;
-        if (!m || typeof m !== "object") return;
-
-        if (m.type === "fred:context") {
-          teamId = m.context?.team?.id ?? null;
-          document.getElementById("ctx").textContent =
-            `${m.context?.team?.name ?? "team"} · protocol v${m.protocolVersion}`;
-          load();
-          return;
-        }
-        const entry = pending.get(m.requestId);
-        if (!entry) return;
-        pending.delete(m.requestId);
-        if (m.type === "fred:response-error") return entry.reject(new Error("request failed"));
-        if (m.type !== "fred:response") return;
-        if (m.status >= 200 && m.status < 300) {
-          try { entry.resolve(m.body ? JSON.parse(m.body) : null); }
-          catch { entry.reject(new Error("bad JSON")); }
-        } else {
-          entry.reject(new Error(`HTTP ${m.status}`));
-        }
-      });
-
-      // An entry written through the capability carries the session it came
+      // An entry written during an agent turn carries the session it came
       // from; one typed here does not. That is the whole basis of attribution.
       const isAgent = (e) => e.source === "agent" || Boolean(e.session_id);
       const entriesOf = (t) => [
@@ -142,7 +152,6 @@
       }
 
       const statCard = (n, k) => `<div class="stat"><div class="n">${n}</div><div class="k">${k}</div></div>`;
-
       function renderList(items) {
         const s = summarise(items);
         const stats = `
@@ -243,7 +252,7 @@
             }
             // The host owns the destination. The record travels through the pin
             // above; this only says which conversation to resume, if any.
-            post({ type: "fred:open-chat", sessionId: resume });
+            client.openChat(resume);
           } catch (e) {
             document.getElementById("err").textContent = `Could not pin: ${e.message}`;
           }
@@ -310,8 +319,25 @@
       // No push channel exists, so progress made in chat arrives by polling.
       setInterval(load, 10000);
 
-      // Announce last: the host replies with fred:context, which starts the load.
-      post({ type: "fred:ready", protocolVersion: PROTOCOL_VERSION });
+      // Connect last. The client announces the frame, retrying until the host
+      // answers, and resolves with the context that starts the first load. A
+      // team switch remounts this frame, so the context never changes under it.
+      // Construction itself fails when this page is opened directly instead of
+      // inside Fred, so it belongs in the same guard as the handshake.
+      try {
+        client = createFredApplicationClient(clientOptions);
+        const context = await client.connect();
+        teamId = context.team?.id ?? null;
+        document.getElementById("ctx").textContent = `${context.team?.name ?? "team"} · protocol v1`;
+        // The host owns the palette. It also republishes its context when the
+        // user changes it, so a theme switch in Fred reaches this frame live.
+        window.fredTheme(context.theme);
+        client.onContext((next) => window.fredTheme(next.theme));
+        load();
+      } catch (e) {
+        document.getElementById("ctx").textContent = "not connected";
+        document.getElementById("err").textContent = `Could not reach Fred: ${e.message}`;
+      }
     </script>
   </body>
 </html>

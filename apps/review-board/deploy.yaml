@@ -1,0 +1,152 @@
+# The sample's own workloads, isolated from Fred in the review-board namespace.
+#
+# One API serves both the iframe REST routes and the streamable HTTP MCP endpoint
+# at /mcp. Agents authenticate to MCP with the current user's bearer; there is no
+# shared service key and no Secret is copied into the Fred agents namespace.
+#
+# The API remains a first-party backend and therefore needs its own Keycloak M2M
+# client, OpenFGA API token, and (when enabled) OpenSearch credentials. Create
+# `review-board-security` out of band as described in README.md.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit the values marked EDIT below.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: review-board
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-board-ui
+  namespace: review-board
+  labels: { app: review-board-ui }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: review-board-ui }
+  template:
+    metadata:
+      labels: { app: review-board-ui }
+    spec:
+      containers:
+        - name: ui
+          image: review-board-ui:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 80 }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-board-ui
+  namespace: review-board
+spec:
+  selector: { app: review-board-ui }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-board-api
+  namespace: review-board
+  labels: { app: review-board-api }
+spec:
+  # fastapi-mcp 0.4 keeps streamable-HTTP sessions in process memory. Recreate
+  # prevents a rollout from briefly splitting sessions across old and new pods.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: review-board-api }
+  template:
+    metadata:
+      labels: { app: review-board-api }
+    spec:
+      containers:
+        - name: api
+          image: review-board-api:sample
+          imagePullPolicy: IfNotPresent
+          ports: [{ name: http, containerPort: 8000 }]
+          env:
+            - name: APP_ID
+              value: review-board
+            # Must exactly match the MCP catalog id: the write route checks
+            # this team capability in addition to application entitlement.
+            - name: MCP_SERVER_ID
+              value: mcp-review-board
+            # EDIT: document reads forward the user bearer to this owning API.
+            - name: KNOWLEDGE_FLOW_BASE
+              value: http://knowledge-flow-backend.fred.svc.cluster.local:8000/knowledge-flow/v1
+            # EDIT: exact `iss` of the incoming UI bearer. It must also be
+            # reachable from this pod for JWKS discovery.
+            - name: KEYCLOAK_REALM_URL
+              value: https://fred.example.com/realms/fred
+            # EDIT: the audience of Fred's login client, `app` by default. The
+            # browser token must carry it in `aud`; see README.md.
+            - name: KEYCLOAK_USER_AUDIENCE
+              value: app
+            # EDIT: this backend's own enabled confidential/M2M client.
+            - name: KEYCLOAK_M2M_CLIENT_ID
+              value: review-board-service
+            - name: REVIEW_BOARD_M2M_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-security
+                  key: m2m-client-secret
+            # EDIT: fully qualified address of Fred's existing OpenFGA. The
+            # Control Plane remains owner of the store and authorization model.
+            - name: OPENFGA_API_URL
+              value: http://openfga.fred.svc.cluster.local:9080
+            - name: OPENFGA_STORE_NAME
+              value: fred
+            # Optional: uncomment when the deployment pins an existing model.
+            # - name: OPENFGA_AUTHORIZATION_MODEL_ID
+            #   value: "<existing-model-id>"
+            - name: REVIEW_BOARD_OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-security
+                  key: openfga-api-token
+            # EDIT: application-owned OpenSearch. Keep the credentials in this
+            # namespace; the browser and agents never receive them.
+            - name: OPENSEARCH_URL
+              value: https://opensearch.fred.svc.cluster.local:9200
+            - name: REVIEW_BOARD_OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-security
+                  key: opensearch-username
+                  optional: true
+            - name: REVIEW_BOARD_OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: review-board-security
+                  key: opensearch-password
+                  optional: true
+            # Keep verification enabled for HTTPS. Set false only for a local
+            # development endpoint using plain HTTP or an intentionally
+            # unverified certificate.
+            - name: OPENSEARCH_VERIFY_CERTS
+              value: "true"
+            # Optional: mount your private CA PEM and uncomment this path.
+            # - name: OPENSEARCH_CA_CERTS
+            #   value: /var/run/secrets/review-board-opensearch/ca.crt
+            - name: REVIEW_BOARD_TASKS_INDEX
+              value: review-board-tasks-v1
+            - name: REVIEW_BOARD_STATES_INDEX
+              value: review-board-states-v1
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-board-api
+  namespace: review-board
+spec:
+  selector: { app: review-board-api }
+  ports: [{ name: http, port: 8000, targetPort: http }]

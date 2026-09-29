@@ -4,7 +4,9 @@ common_model_settings:
   temperature: 0.0
   timeout:
     connect: 10.0
-    read: 120.0
+    # Must stay above the review steps' own model timeout, so a slow model hits
+    # that typed timeout instead of a bare transport read error.
+    read: 610.0
 
 default_profile_by_capability:
   chat: default.chat.mistral

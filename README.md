@@ -20,8 +20,9 @@ Three kinds of samples, each self-contained:
 fred-samples/
 ├── agents/                         Agent pod — all sample agents in one service
 ├── apps/
-│   ├── document-triage/            Sample application — no secrets, agents read only
-│   └── progress-tracker/           Sample application — UI + API + agent capability
+│   ├── document-triage/            Sample application — only a person writes the record
+│   ├── progress-tracker/           Sample application — UI + API + MCP tools
+│   └── review-board/               Sample application — UI + API + MCP tools, driven by agents
 ├── knowledge-bases/                Sample Knowledge Bases — see its README.md
 │   ├── local-folder/               synchronize Markdown from a folder
 │   ├── git-repository/             synchronize a GitHub or GitLab branch
@@ -145,27 +146,58 @@ Rewrite this sentence in plain English: The rollout was postponed due to environ
 
 ---
 
+### Document Review — application-driven agents
+
+Four templates that run the Review Board application's workflow: a coordinator
+calls a document analyst, a risk reviewer and an action planner in order, then
+writes a final summary. Each reads the source document and the earlier stages'
+saved results through the application's MCP server, under the signed-in user's
+bearer.
+
+**Sample docs:** [README.md](agents/fred_samples_agents/document_review/README.md)
+
+```
+Agent IDs: fred.samples.document_review.coordinator
+           fred.samples.document_review.analyst
+           fred.samples.document_review.risk_reviewer
+           fred.samples.document_review.action_planner
+Requires:  the review-board application deployed and granted to the team
+```
+
+Only the coordinator needs a managed instance; it invokes the three specialists
+from this pod's own registry. Start from
+[apps/review-board/README.md](apps/review-board/README.md).
+
+---
+
 ## Applications
 
 Agents are not the only thing you can add to Fred. An **application** is your own
 UI and service, rendered in Fred and reachable by its agents.
 
-There are two, in `apps/`. They solve the same shape of problem and differ in
-exactly one decision — **who writes the durable record** — which is what decides
-whether the application needs a datastore and a secret of its own.
+There are three, in `apps/`. They solve the same shape of problem and differ in
+one decision — **who writes the durable record** — which is what decides whether
+the application needs a datastore of its own.
 
-| | `apps/document-triage/` | `apps/progress-tracker/` |
-|---|---|---|
-| Who writes | the human, under their own bearer | agents, through the app's API |
-| Storage | the team's Knowledge Flow workspace | SQLite owned by the app |
-| Secrets | **none** | a shared service key |
-| Start here | ✅ | only if you need agent writes |
+| | `apps/document-triage/` | `apps/progress-tracker/` | `apps/review-board/` |
+|---|---|---|---|
+| Who writes | only a person, under their own bearer | a person and agents | agents, stage by stage |
+| Storage | the team's Knowledge Flow workspace | SQLite owned by the app | OpenSearch owned by the app |
+| Agent path | none — agents read through Fred's platform capabilities | MCP at `/mcp` | MCP at `/mcp` |
+| Start here | ✅ | when agents must write the record | when a multi-stage workflow drives it |
 
-**Deployment guide for both:** [apps/DEPLOYMENT.md](apps/DEPLOYMENT.md)
+All three are first-party backends. Each validates the caller's bearer against
+Keycloak and reads the team's application grant from Fred's OpenFGA, so each
+needs its own Keycloak M2M client secret and its own OpenFGA API token in a
+Secret of its own namespace. None of them holds a shared agent key: an agent
+that calls an application's MCP server carries the signed-in user's bearer, and
+every check the UI goes through runs again unchanged.
+
+**Deployment guide for all three:** [apps/DEPLOYMENT.md](apps/DEPLOYMENT.md)
 
 ---
 
-### Document Triage — sample application, no secrets
+### Document Triage — sample application, no storage of its own
 
 A team reviews the documents in one of its folders, marking each **reviewed** or
 **needs work**. Agents read the corpus and propose triage in chat; only a person
@@ -173,20 +205,19 @@ records a decision.
 
 ```
 Folder:   apps/document-triage/          (the folder name is also the app_id)
-Pieces:   ui/ (static page) · api/ (stateless FastAPI) · capability/ (read-only tools)
-Requires: a Fred deployment with Knowledge Flow
+Pieces:   ui/ (static page) · api/ (stateless FastAPI)
+Requires: a Fred deployment with Knowledge Flow, plus Keycloak and OpenFGA
 ```
 
 **Sample docs:** [README.md](apps/document-triage/README.md) ·
 [DEPLOYMENT.md](apps/DEPLOYMENT.md)
 
-Its capability is read-only and holds no credential: it reads
-`document_folders`, `document_summarize` and `workspace_fs`, whose adapters keep
-the runtime's token private. Agents may read team-shared files but may only
-mutate inside their own subtree — *agents never share* — so the human commits
-every record. That constraint is why this sample needs no secret at all, and it
-is explained in
-[Why there is no service key](apps/document-triage/README.md#why-there-is-no-service-key).
+It ships no Python capability package and mounts no MCP server, so nothing has
+to be installed into the agents image for it. Agents reach the corpus and the
+team workspace through Fred's own platform capabilities: they may read
+team-shared files but may only mutate inside their own subtree, so they can
+propose triage in chat and cannot record it. The person commits every record,
+under their own bearer.
 
 ---
 
@@ -198,31 +229,48 @@ conversations that touched them — so work survives across days and sessions.
 
 ```
 Folder:   apps/progress-tracker/         (the folder name is also the app_id)
-Pieces:   ui/ (static page) · api/ (FastAPI + SQLite) · capability/ (agent tools)
-Requires: a Fred deployment to render the UI — but the API runs standalone
+Pieces:   ui/ (static page) · api/ (FastAPI + SQLite + MCP at /mcp)
+Requires: a Fred deployment to render the UI; Keycloak and OpenFGA to start
 ```
 
 **Sample docs:** [README.md](apps/progress-tracker/README.md) ·
 [DEPLOYMENT.md](apps/DEPLOYMENT.md)
 
-Because its agents write shared state — which Fred does not support directly —
-it keeps its own database and reaches it with a shared key Fred neither issues
-nor validates. The README is explicit about what that costs; read it before
-copying the pattern.
-
-**Try the API on its own** (no cluster needed):
-
-```bash
-cd apps/progress-tracker/api
-uv venv && uv pip install -r requirements.txt
-PROGRESS_TRACKER_SERVICE_KEY=dev-key .venv/bin/uvicorn app:app --port 8000
-```
+One service, two entry points: the same FastAPI app serves the iframe's REST
+routes and a streamable HTTP MCP endpoint. Six tagged routes become agent tools,
+four of which write; those four additionally require the team to hold the
+`mcp-progress-tracker` capability, so entitlement to open the page is not
+entitlement for an agent to write the record. The API's own README has the
+environment it needs to run outside a cluster.
 
 ---
 
-Both capabilities are already wired into the agent pod above: `agents/` depends
-on each package by path, so `make dev` installs them. Each stays inert —
-contributing no tools — until its application is reachable.
+### Review Board — sample application, staged agent workflow
+
+A person creates a review task against a corpus document; the Document Review
+Coordinator then drives an analyst, a risk reviewer and an action planner
+through it, each saving a structured result. The dashboard renders those stored
+decisions and timings.
+
+```
+Folder:   apps/review-board/             (the folder name is also the app_id)
+Pieces:   ui/ (static page) · api/ (FastAPI + OpenSearch + MCP at /mcp) · agents/ (deploy manifest)
+Requires: a Fred deployment, Keycloak, OpenFGA, OpenSearch, and a configured model
+```
+
+**Sample docs:** [README.md](apps/review-board/README.md) ·
+[DEPLOYMENT.md](apps/DEPLOYMENT.md)
+
+Its agent templates live in the sample agents pod, not in the application:
+`agents/fred_samples_agents/document_review/`. OpenSearch credentials stay
+inside the API pod; neither the browser nor an agent receives them.
+
+---
+
+No application ships a pip-installable capability package or a
+`fred.capabilities` entry point, so the agent pod installs nothing per
+application. Agents reach an application only over its MCP endpoint, with the
+signed-in user's bearer.
 
 ---
 
@@ -370,15 +418,23 @@ List all available agents:
 
 ## Validate the repository
 
-Every package owns its venv, its quality baselines and its Makefile; the root
-Makefile fans out to all of them:
+The agent pod and the three Knowledge Bases each own a venv, quality baselines
+and a Makefile; the root Makefile fans out to those four:
 
 ```bash
-make test           # every package's offline test suite
-make code-quality   # ruff, bandit, detect-secrets, basedpyright everywhere
+make test           # each package's offline test suite
+make code-quality   # ruff, bandit, detect-secrets, basedpyright
 ```
 
 Both are offline: no model key, no MCP server, no cluster.
+
+The applications under `apps/` have no Makefile and are not in that fan-out.
+Each carries its own suite, run against its API requirements from the
+repository root:
+
+```bash
+python -m pytest apps/review-board/tests
+```
 
 ---
 

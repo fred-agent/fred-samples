@@ -1,25 +1,24 @@
 """Document-triage application API.
 
 Fred's gateway strips ``/app-services/<app_id>`` before proxying, so this
-service sees ``/teams/<team_id>/...``. The gateway authorizes nothing, so every
-handler asks the Control Plane whether the caller may use this application for
-this team, and fails closed when that question cannot be answered.
-
-**There is no service credential anywhere in this application.** Every outbound
-call carries the caller's own bearer, forwarded verbatim, and Knowledge Flow
-authorizes it per user. That is possible because of one design choice: the
-agent never writes. Agents may read team-shared files but may only *mutate*
-inside their own subtree (FILES-04, "agents never share"), so an application
-whose agents wrote shared state would need a credential of its own -- and would
-be routing around a platform boundary rather than working with it. Here the
-agent proposes in chat and the human commits, so every write is a user write.
+service sees ``/teams/<team_id>/...``. The gateway authorizes nothing: this is
+a first-party backend that validates every caller's bearer locally and checks
+the team's ``app:document-triage`` grant directly in OpenFGA through its own
+process-lifetime ``RebacSdk``.
 
 Two independent gates apply, and both are needed:
 
-- the Control Plane says whether this *team* may use this *application*;
+- ReBAC says whether this *user* may use this *application* for this *team*;
 - Knowledge Flow says whether this *user* may touch that *path or document*.
 
 Neither implies the other.
+
+Every Knowledge Flow call carries the caller's own bearer, forwarded verbatim.
+The backend's M2M and OpenFGA credentials are process credentials: they never
+stand in for a human and are never mounted into an agent pod. That works
+because the agent never writes -- agents may read team-shared files but may
+only mutate inside their own subtree ("agents never share"), so the
+agent proposes in chat and the person commits under their own identity.
 """
 
 from __future__ import annotations
@@ -28,26 +27,110 @@ import hashlib
 import json
 import os
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 from urllib.parse import quote
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fred_core import (
+    KeycloakUser,
+    RamLogStore,
+    SecurityConfiguration,
+    get_current_user_without_gcu,
+    log_setup,
+    security_configuration_from_env,
+)
+from fred_core.common import register_exception_handlers
+from fred_core.kpi import KPIDefaults, KpiLogStore, KPIWriter
+from fred_core.security.rebac.rebac_sdk import RebacSdk, rebac_sdk_factory
 from pydantic import BaseModel, Field
 
 # Everything below is driven by this one id, so a copy of this directory
 # becomes a different application by changing it in one place.
 APP_ID = os.environ.get("APP_ID", "document-triage")
-CONTROL_PLANE = os.environ.get("CONTROL_PLANE_BASE", "")
 # Knowledge Flow, e.g. http://knowledge-flow:8111/knowledge-flow/v1
 KNOWLEDGE_FLOW = os.environ.get("KNOWLEDGE_FLOW_BASE", "")
+M2M_SECRET_ENV = "DOCUMENT_TRIAGE_M2M_CLIENT_SECRET"  # pragma: allowlist secret
+DELEGATION_ENV = "FRED_DELEGATION"
+OPENFGA_TOKEN_ENV = "DOCUMENT_TRIAGE_OPENFGA_API_TOKEN"  # pragma: allowlist secret
 TIMEOUT = 30.0
 BROWSE_LIMIT = 200
 
 MARKS = ("unreviewed", "reviewed", "needs_work")
 
-app = FastAPI(title=APP_ID)
+
+def _security_configuration() -> SecurityConfiguration:
+    """The hardened profile, assembled by the shared library.
+
+    Only the two variable names that are this application's own are supplied;
+    every shared rule lives in one place rather than a copy per application.
+    """
+
+    return security_configuration_from_env(
+        m2m_secret_env=M2M_SECRET_ENV,
+        openfga_token_env=OPENFGA_TOKEN_ENV,
+        delegation_env=DELEGATION_ENV,
+    )
+
+
+# Without this the shared library logs to handlers that were never installed,
+# so every audit event it emits — including each delegation decision — is
+# dropped instead of recorded.
+log_setup(
+    service_name=f"{APP_ID}-api",
+    log_level=os.environ.get("LOG_LEVEL", "INFO"),
+    store=RamLogStore(),
+)
+
+KPI = KPIWriter(
+    KpiLogStore("info"),
+    KPIDefaults(source=f"{APP_ID}-api", static_dims={"service": APP_ID}),
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Fail startup unless the process-lifetime ReBAC reader is ready."""
+
+    sdk = await rebac_sdk_factory(_security_configuration(), kpi_writer=KPI)
+    try:
+        app.state.rebac_sdk = sdk
+        yield
+    finally:
+        await sdk.close()
+
+
+app = FastAPI(title=APP_ID, lifespan=lifespan)
+register_exception_handlers(app)
+
+
+def _rebac_sdk(request: Request) -> RebacSdk:
+    return cast(RebacSdk, request.app.state.rebac_sdk)
+
+
+CurrentUser = Annotated[KeycloakUser, Depends(get_current_user_without_gcu)]
+Rebac = Annotated[RebacSdk, Depends(_rebac_sdk)]
+
+
+async def require_entitled(
+    team_id: str,
+    user: CurrentUser,
+    rebac: Rebac,
+) -> str:
+    """Require team membership and the typed ``app:document-triage`` grant.
+
+    One call answers both halves: a non-member is refused, and so is a member
+    whose team was never granted this application.
+    """
+
+    await rebac.check_application_access(user, team_id=team_id, app_id=APP_ID)
+    return team_id
+
+
+Entitled = Annotated[str, Depends(require_entitled)]
 
 
 def _now() -> str:
@@ -68,49 +151,13 @@ class Mark(BaseModel):
     from_session: str | None = Field(default=None, max_length=128)
 
 
-async def require_entitled(
-    team_id: str,
-    authorization: Annotated[str | None, Header()] = None,
-) -> str:
-    """Ask the Control Plane the question the gateway does not.
-
-    One call answers both halves, because grants are team to capability: a
-    non-member is refused outright, and a member whose team was never granted
-    this application sees it absent from the list.
-    """
-
-    if not authorization:
-        raise HTTPException(status_code=401, detail="missing_bearer")
-    if not CONTROL_PLANE:
-        raise HTTPException(status_code=403, detail="entitlement_check_unconfigured")
-
-    url = f"{CONTROL_PLANE}/control-plane/v1/teams/{team_id}/applications"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, headers={"authorization": authorization})
-    except httpx.HTTPError:
-        # Fail closed: an unreachable Control Plane must never mean "allowed".
-        raise HTTPException(status_code=403, detail="entitlement_check_unavailable")
-
-    if response.status_code == 403:
-        raise HTTPException(status_code=403, detail="not_a_team_member")
-    if response.status_code != 200:
-        raise HTTPException(status_code=403, detail="entitlement_check_failed")
-    listed = any(item.get("id") == APP_ID for item in response.json().get("items", []))
-    if not listed:
-        raise HTTPException(status_code=403, detail="app_not_granted_to_team")
-    return team_id
-
-
-Entitled = Annotated[str, Depends(require_entitled)]
-
-
 # --------------------------------------------------------------------------- #
 # Knowledge Flow, called as the user.
 #
 # Every helper takes the caller's Authorization header and forwards it
-# unchanged. None of them has a credential of its own, which is what makes the
-# per-user authorization Knowledge Flow already performs the real gate.
+# unchanged. None of them uses this backend's own credentials, which is what
+# makes the per-user authorization Knowledge Flow already performs the real
+# gate on documents and workspace paths.
 # --------------------------------------------------------------------------- #
 
 
@@ -225,9 +272,7 @@ async def _read_marks(team_id: str, authorization: str) -> dict[str, dict[str, A
     return marks
 
 
-async def _write_mark(
-    team_id: str, record: dict[str, Any], authorization: str
-) -> None:
+async def _write_mark(team_id: str, record: dict[str, Any], authorization: str) -> None:
     name = f"{record['slug']}.json"
     target = f"{_board_dir(team_id)}/{name}"
     body = json.dumps(record, indent=2, sort_keys=True).encode()
@@ -249,6 +294,8 @@ async def _write_mark(
 
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
+    """Readiness endpoint; startup already proved the ReBAC reader."""
+
     return {"status": "ok"}
 
 
@@ -273,8 +320,7 @@ async def list_folders(
         return {"items": []}
 
     # A tag carries `id`, `name` and an optional parent `path`; the path a
-    # person recognises is the two joined, which is also what the capability's
-    # `resolve_folder` matches against.
+    # person recognises is the two joined.
     items = []
     for tag in payload:
         if not isinstance(tag, dict):
@@ -283,9 +329,7 @@ async def list_folders(
         if not tag_id or not name:
             continue
         parent = tag.get("path")
-        items.append(
-            {"tag_id": tag_id, "path": f"{parent}/{name}" if parent else name}
-        )
+        items.append({"tag_id": tag_id, "path": f"{parent}/{name}" if parent else name})
     return {"items": items}
 
 

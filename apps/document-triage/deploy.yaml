@@ -4,11 +4,17 @@
 # reaches them only by the Service DNS names given in FRONTEND_APPLICATIONS_JSON,
 # which is why an application can live in any namespace.
 #
-# Note what is absent: no Secret, no volume, no database. This application
-# stores nothing of its own -- every record lives in the team's Knowledge Flow
-# workspace and is written with the caller's own token.
+# The API is a first-party backend: it validates caller bearers against Keycloak
+# and checks the team's application grant directly in OpenFGA. It therefore has
+# its own Keycloak M2M client and its own OpenFGA API token. Create the
+# `document-triage-security` Secret out of band as described in README.md. Those
+# credentials stay in this namespace; they are never copied into the Fred agents
+# namespace and never stand in for the caller.
 #
-# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
+# There is still no volume and no database: every triage record lives in the
+# team's Knowledge Flow workspace and is written with the caller's own token.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit the values marked EDIT below.
 ---
 apiVersion: v1
 kind: Namespace
@@ -69,16 +75,44 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 8000 }]
           env:
-            # EDIT: fully qualified, because this service lives in another
-            # namespace and the entitlement check must reach Fred's control
-            # plane. Substitute your Fred namespace for `fred`.
-            - name: CONTROL_PLANE_BASE
-              value: http://control-plane-backend.fred.svc.cluster.local:8222
+            - name: APP_ID
+              value: document-triage
             # EDIT: Knowledge Flow, which owns both the document corpus and the
             # team workspace. Every call the API makes here carries the
             # caller's own bearer, so Knowledge Flow authorizes per user.
             - name: KNOWLEDGE_FLOW_BASE
               value: http://knowledge-flow-backend.fred.svc.cluster.local:8000/knowledge-flow/v1
+            # EDIT: exact `iss` of the incoming UI bearer. It must also be
+            # reachable from this pod for JWKS discovery.
+            - name: KEYCLOAK_REALM_URL
+              value: https://fred.example.com/realms/fred
+            # EDIT: the audience of Fred's login client, `app` by default. The
+            # browser token must carry it in `aud`; see README.md.
+            - name: KEYCLOAK_USER_AUDIENCE
+              value: app
+            # EDIT: this backend's own enabled confidential/M2M client.
+            - name: KEYCLOAK_M2M_CLIENT_ID
+              value: document-triage-service
+            - name: DOCUMENT_TRIAGE_M2M_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: document-triage-security
+                  key: m2m-client-secret
+            # EDIT: fully qualified address of Fred's existing OpenFGA. The
+            # Control Plane remains owner of the store and authorization model;
+            # this backend only reads them.
+            - name: OPENFGA_API_URL
+              value: http://openfga.fred.svc.cluster.local:9080
+            - name: OPENFGA_STORE_NAME
+              value: fred
+            # Optional: uncomment when the deployment pins an existing model.
+            # - name: OPENFGA_AUTHORIZATION_MODEL_ID
+            #   value: "<existing-model-id>"
+            - name: DOCUMENT_TRIAGE_OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: document-triage-security
+                  key: openfga-api-token
           readinessProbe:
             httpGet: { path: /healthz, port: 8000 }
             initialDelaySeconds: 3

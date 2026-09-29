@@ -225,3 +225,6 @@ openapi.json
 # wtf worktree port allocations
 PORTS.md
 .DS_Store
+
+# installed by the sample UIs that consume Fred's published frontend packages
+apps/*/ui/node_modules/
