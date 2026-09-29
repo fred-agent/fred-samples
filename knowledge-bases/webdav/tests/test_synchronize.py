@@ -21,6 +21,8 @@ the only record of what it holds.
 
 from __future__ import annotations
 
+import asyncio
+
 from fred_samples_webdav_kb.synchronize import synchronize
 from tests.conftest import File, RecordingBoundary, Share, settings_for, source_for
 
@@ -207,6 +209,61 @@ async def test_a_failed_retract_leaves_the_document_so_a_later_run_retries():
     boundary.fail_retract = set()
     _, boundary = await run(share, boundary)
     assert boundary.retracted == ["b.md"]
+
+
+async def test_a_document_still_ingesting_is_neither_a_failure_nor_written_again():
+    """The wait ended first; Fred did not. The next run must not pile a second
+    ingestion of the same version onto the one still running."""
+    share = Share(files={"a.md": File(b"a"), "b.md": File(b"b")})
+
+    report, boundary = await run(share, RecordingBoundary(pending={"b.md"}))
+
+    assert report.succeeded
+    assert report.pending == 1
+    assert report.created == 1
+    assert [issue.code for issue in report.warnings] == ["ingestion_pending"]
+    assert "still ingesting" in report.summary()
+
+    boundary.pending = set()
+    report, boundary = await run(share, boundary)
+    assert boundary.published == {}
+    assert report.unchanged == 2
+
+
+class _CountingBoundary(RecordingBoundary):
+    """Remembers how many writes were ever in flight at once."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_flight = 0
+        self.most_in_flight = 0
+
+    async def publish(self, *, relative_path: str, content: bytes, version: str):
+        self.in_flight += 1
+        self.most_in_flight = max(self.most_in_flight, self.in_flight)
+        await asyncio.sleep(0.01)
+        self.in_flight -= 1
+        await super().publish(
+            relative_path=relative_path, content=content, version=version
+        )
+
+
+async def test_a_run_writes_as_many_documents_at_once_as_it_is_allowed():
+    share = Share(files={f"{name}.md": File(name.encode()) for name in "abcdefgh"})
+    boundary = _CountingBoundary()
+    source = source_for(share)
+    try:
+        report = await synchronize(
+            settings=settings_for(share),
+            source=source,
+            boundary=boundary,
+            concurrency=3,
+        )
+    finally:
+        await source.aclose()
+
+    assert report.created == 8
+    assert boundary.most_in_flight == 3
 
 
 async def test_a_bounded_run_leaves_the_rest_alone_rather_than_retracting_it():

@@ -28,3 +28,18 @@ scheduler:
     namespace: "default"
     # No task_queue: a run's queue is derived from the definition id on both
     # sides, so that a pod and the Control Plane cannot disagree about it.
+
+# This sample's own section: what whoever deploys the pod decides, the same for
+# every instance it serves. What a team chooses (share, files, profile) is in
+# its form instead. Both keys are optional; the values below are the defaults,
+# written out so a deployment states them. An unknown key stops the pod.
+webdav:
+  # Documents one run fetches and hands to Fred at once (1-64). Each is held
+  # whole in memory while it is written, so this times 10 MiB is a run's memory
+  # ceiling. Raising it shortens a large first run, as far as Knowledge Flow's
+  # ingestion keeps up.
+  concurrency: 4
+  # How long a run follows one document's ingestion. Past it the document is
+  # reported as `ingestion_pending`, not as a failure: Fred keeps ingesting it,
+  # and the next run finds it listed and does not write it again.
+  ingestion_wait_seconds: 600

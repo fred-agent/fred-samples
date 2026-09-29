@@ -33,6 +33,7 @@ from fred_sdk.knowledge_base import (
     KnowledgeBaseSyncResult,
 )
 
+from fred_samples_webdav_kb.deployment import WebDavDeployment, load_deployment
 from fred_samples_webdav_kb.document_boundary import open_boundary
 from fred_samples_webdav_kb.report import Issue, RunReport
 from fred_samples_webdav_kb.settings import (
@@ -154,12 +155,19 @@ async def synchronize(context: KnowledgeBaseRunContext) -> KnowledgeBaseSyncResu
         verify=verify,
         max_file_bytes=settings.max_file_bytes,
     )
-    boundary = open_boundary(library_id=context.library_id, profile=settings.profile)
+    # Read per run, like the rest of the pod's configuration; the entry point
+    # has already refused a file this could not parse.
+    pod = load_deployment()
+    deployment = pod.webdav if pod is not None else WebDavDeployment()
+    boundary = open_boundary(
+        pod, library_id=context.library_id, profile=settings.profile
+    )
     try:
         report = await reconcile(
             settings=settings,
             source=source,
             boundary=boundary,
+            concurrency=deployment.concurrency,
         )
     finally:
         await boundary.aclose()

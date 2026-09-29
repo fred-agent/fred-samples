@@ -48,16 +48,17 @@ compare against.
 A write is *accepted*, not finished: Knowledge Flow answers 202 with a task
 and ingests afterwards. The run follows each task to its end and counts a
 document as written only once it has landed; an ingestion that fails is this
-run's `write_failed`, and one still running when the wait gives up is reported
-the same way. Either way nothing is kept here: the next run asks the library
-again, and a document it does not list is simply written again. There is no
+run's `write_failed`. One still running when the wait gives up is not a
+failure: it is reported as `ingestion_pending`, and Fred keeps ingesting it.
+Either way nothing is kept here: the next run asks the library again, and a
+document it does not list is simply written again. There is no
 sidecar to lose, nothing to mount a volume for, and no way for a pod's record
 of the library to disagree with the library.
 
 The price is that an absence has one meaning too few: never written and failed
 are the same absence, and both are offered again — idempotent. A document still
 being ingested is listed with its version and is not offered again unless the
-share's tag moved on; a wait that gave up is only this run's `write_failed`.
+share's tag moved on — which is why a wait that gave up is only a warning.
 
 ---
 
@@ -197,12 +198,36 @@ A file over 10 MiB is skipped with a warning rather than written — that one is
 not on the form, because it bounds what this implementation will carry rather
 than what a team is choosing, and it lives in
 [`settings.py`](fred_samples_webdav_kb/settings.py). Several documents are
-fetched at once and each is held whole before it is written, so that figure
-bounds a pod's memory as much as it bounds one file.
+fetched at once (`webdav.concurrency`, below) and each is held whole before it
+is written, so that figure bounds a pod's memory as much as it bounds one file.
 
 `max_files` counts **documents**, not files on the share, so a folder holding a
 few hundred pictures beside its Markdown does not eat the bound — and, more to
 the point, does not make every run a partial one.
+
+### What the operator decides
+
+The fields above are a team's, one set per instance. Two more settings are the
+deployment's, the same for every instance the pod serves, so they are not on
+the form: they sit in `configuration.yaml`, in this sample's own `webdav:`
+section, parsed by
+[`WebDavPodConfiguration`](fred_samples_webdav_kb/deployment.py) — the SDK's
+`PodConfiguration` plus that one section.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `webdav.concurrency` | 4 | Documents one run fetches and hands to Fred at once, 1 to 64. Times 10 MiB, a run's memory ceiling. Raising it shortens a large first run, as far as Knowledge Flow's ingestion keeps up. |
+| `webdav.ingestion_wait_seconds` | 600 | How long a run follows one document's ingestion. Past it the document is `ingestion_pending` — a warning, not a failure — and the next run finds it listed and leaves it be. |
+
+Both keys are optional, and the shipped file writes out the defaults so a
+deployment states them. The pod checks the section **before it serves
+anything**: a value out of range, or a misspelt key, stops it at start-up with
+the same configuration banner as the rest of the file, rather than applying a
+default nobody chose.
+
+**Only a first run is long.** It writes every document; every later run
+fetches only what changed — one `PROPFIND` per folder, one read of the library,
+and no download for a file whose tag has not moved.
 
 ---
 
@@ -289,8 +314,9 @@ is one nobody remembers accepting.
 2. Walk the tree, one `PROPFIND` per folder, and ask each file for its entity
    tag, date and size.
 3. Decide: what is new, what moved on, what the share no longer has.
-4. Fetch and write what changed, four at a time, following each write until
-   its ingestion ends.
+4. Fetch and write what changed, `webdav.concurrency` at a time (4 by
+   default), following each write until its ingestion ends or
+   `webdav.ingestion_wait_seconds` pass.
 5. Retract what the share dropped — **only if the walk was exhaustive**.
 
 Nothing is recorded at the end. Step 1 is the record.
@@ -361,8 +387,9 @@ directly. The seam is [`document_boundary.py`](fred_samples_webdav_kb/document_b
 
 The same surface reads back. A write is answered with 202 and a task, which
 the boundary follows with the publisher's `wait` until it is terminal: a
-document counts as written only once it has landed, and an ingestion that
-fails is this run's `write_failed`. The library's listing — documents ingested
+document counts as written only once it has landed, an ingestion that fails
+is this run's `write_failed`, and one still running when
+`webdav.ingestion_wait_seconds` pass is `ingestion_pending`. The library's listing — documents ingested
 or still being ingested — is what the next run reconciles against: a document
 whose ingestion failed is absent from it and is written again, with no state
 kept here to notice.
@@ -422,9 +449,11 @@ What a Deployment has to get right:
 | What | Why |
 |---|---|
 | Mount a ConfigMap over `/app/config/configuration.yaml` | `$CONFIG_FILE` resolves there from the working directory. The shipped file points at `localhost` and is a shape to copy, not a deployment: `control_plane_url`, `knowledge_flow_url`, `security.m2m.realm_url` and `scheduler.temporal.host` must name the cluster's services. |
+| State the `webdav:` section in that ConfigMap | `concurrency` and `ingestion_wait_seconds`, per "What the operator decides". The pod refuses to start on a value it cannot use. |
 | Set `FRED_KB_CLIENT_SECRET` from a Secret | The confidential client's secret, and the only value the pod takes from its environment. Its name is whatever `security.m2m.secret_env_var` says. No `.env` file is needed in a cluster. |
 | Reach Keycloak, the Control Plane, Knowledge Flow, Temporal and the share | The pod opens no port but makes outbound calls to all five. |
 | No volume | This sample keeps no state between runs — the library is the record, see "What a run does". |
+| Nothing for shutdown | The pod handles the SIGTERM Kubernetes sends, in [`deployment.py`](fred_samples_webdav_kb/deployment.py): its worker stops and reports the run it was serving as interrupted, so the workflow engine can give that run's next attempt to another pod at once. Without the handler, Python as PID 1 ignores SIGTERM, the pod is killed after its grace period, and the interrupted run counts as running until the SDK's activity timeout (`ACTIVITY_TIMEOUT`, six hours in `fred-sdk` 4.4.0) expires. A pod killed outright — out of memory, a lost node — still costs that wait. |
 | Check `$FRED_SAMPLES_WEBDAV_CA_FILE` | It defaults to the image's own bundle, `/etc/ssl/certs/ca-certificates.crt`, so a root the cluster injects into the container's system store is trusted with no further configuration. Point it at a mounted PEM instead when the root comes from a ConfigMap, per the section above. |
 
 To find out which of those a share needs before deploying anything, run the

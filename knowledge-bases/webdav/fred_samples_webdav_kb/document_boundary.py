@@ -30,9 +30,9 @@ from __future__ import annotations
 import logging
 from typing import Protocol
 
-from fred_sdk.knowledge_base import DocumentPublisher, MissingPodConfiguration
-from fred_sdk.knowledge_base.configuration import PodConfiguration
+from fred_sdk.knowledge_base import DocumentPublisher, DocumentWaitTimeout
 
+from fred_samples_webdav_kb.deployment import WebDavDeployment, WebDavPodConfiguration
 from fred_samples_webdav_kb.settings import DEFAULT_PROFILE, IngestionProfile
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,16 @@ logger = logging.getLogger(__name__)
 # it does not know, so a Knowledge Base cannot name itself here: the vocabulary
 # is the platform's, not a contributor's.
 SOURCE_TAG = "fred"
+
+
+class IngestionPending(RuntimeError):
+    """Fred accepted the write and was still ingesting it when the wait ended.
+
+    Not a failure, and deliberately not counted as one: the library already
+    lists the document as in progress, with its version, so the next run finds
+    it and does not write it again — and if the ingestion fails after all, the
+    listing drops it and that run writes it again.
+    """
 
 
 class Boundary(Protocol):
@@ -94,7 +104,8 @@ class _KnowledgeFlowBoundary:
     this implementation's source key — including the read-back, which is what
     a run reconciles against. Nothing Fred assigns outlives a call here: a
     write is accepted with a task and followed to its end, so `publish` returns
-    only once the document has landed — and raises when it did not.
+    only once the document has landed — and raises when it did not, or when it
+    had not yet when the wait ended.
     """
 
     def __init__(
@@ -102,9 +113,11 @@ class _KnowledgeFlowBoundary:
         publisher: DocumentPublisher,
         *,
         profile: IngestionProfile = DEFAULT_PROFILE,
+        wait_seconds: int = WebDavDeployment().ingestion_wait_seconds,
     ) -> None:
         self._publisher = publisher
         self._profile: IngestionProfile = profile
+        self._wait_seconds = wait_seconds
 
     async def publish(
         self, *, relative_path: str, content: bytes, version: str
@@ -119,7 +132,17 @@ class _KnowledgeFlowBoundary:
             profile=self._profile,
         )
         logger.info("accepted %s as task %s", relative_path, handle.task_id)
-        outcome = await self._publisher.wait(handle.task_id)
+        try:
+            outcome = await self._publisher.wait(
+                handle.task_id, timeout=self._wait_seconds
+            )
+        except DocumentWaitTimeout as error:
+            logger.info(
+                "still ingesting %s after %ss", relative_path, self._wait_seconds
+            )
+            raise IngestionPending(
+                f"task {error.task_id} still running after {self._wait_seconds}s"
+            ) from error
         if not outcome.succeeded:
             logger.info("failed %s: ingestion %s", relative_path, outcome.state)
             raise RuntimeError(
@@ -139,16 +162,15 @@ class _KnowledgeFlowBoundary:
 
 
 def open_boundary(
+    configuration: WebDavPodConfiguration | None,
     *,
     library_id: str,
     source_tag: str = SOURCE_TAG,
     profile: IngestionProfile = DEFAULT_PROFILE,
 ) -> Boundary:
-    """Whichever boundary this environment can support."""
-    try:
-        configuration = PodConfiguration.load()
-    except MissingPodConfiguration as error:
-        logger.info("No Fred configuration (%s): logging documents instead", error)
+    """Whichever boundary this pod's configuration can support."""
+    if configuration is None:
+        logger.info("No Fred configuration: logging documents instead")
         return LoggingBoundary(profile=profile)
 
     if not configuration.knowledge_flow_url:
@@ -158,4 +180,5 @@ def open_boundary(
     return _KnowledgeFlowBoundary(
         DocumentPublisher(configuration, library_id=library_id, source_tag=source_tag),
         profile=profile,
+        wait_seconds=configuration.webdav.ingestion_wait_seconds,
     )

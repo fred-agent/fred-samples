@@ -29,6 +29,7 @@ from xml.sax.saxutils import escape
 import httpx
 import pytest
 
+from fred_samples_webdav_kb.document_boundary import IngestionPending
 from fred_samples_webdav_kb.webdav import Address, WebDavSource, address
 
 
@@ -246,6 +247,7 @@ class RecordingBoundary:
         fail_publish: Collection[str] = (),
         fail_retract: Collection[str] = (),
         still_ingesting: Collection[str] = (),
+        pending: Collection[str] = (),
         fail_listing: bool = False,
     ) -> None:
         self.contents: dict[str, str | None] = dict(holds or {})
@@ -255,6 +257,9 @@ class RecordingBoundary:
         # Accepted and still being ingested: written, and correctly absent from
         # the listing until it finishes. The gap the whole design turns on.
         self.still_ingesting = set(still_ingesting)
+        # Accepted, listed as in progress, and still running when the wait ended:
+        # what Fred's listing shows for a write the run stopped following.
+        self.pending = set(pending)
         self.fail_publish = set(fail_publish)
         self.fail_retract = set(fail_retract)
 
@@ -268,6 +273,9 @@ class RecordingBoundary:
         if relative_path in self.fail_publish:
             raise RuntimeError(f"refused {relative_path}")
         self.published[relative_path] = (content, version)
+        if relative_path in self.pending:
+            self.contents[relative_path] = version or None
+            raise IngestionPending(f"{relative_path} still running")
         if relative_path not in self.still_ingesting:
             self.contents[relative_path] = version or None
 

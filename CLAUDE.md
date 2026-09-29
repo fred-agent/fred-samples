@@ -179,6 +179,12 @@ A Knowledge Base pod loads `configuration.yaml` through `$CONFIG_FILE` like ever
 `security.m2m` is parsed by `M2MSecurity` and `scheduler.temporal` by `TemporalSchedulerConfig` —
 the same model the Control Plane parses. The environment carries the client secret alone.
 
+A setting that belongs to one sample's operator rather than to a team's form goes in a top-level
+section named after that sample — `webdav:` in `knowledge-bases/webdav/` — parsed by a subclass of the
+SDK's `PodConfiguration` so it comes from the same file through the same loader, and checked when the
+pod starts. Never an environment variable, and never a new key under `knowledge_base:`, which is the
+SDK's.
+
 Two deliberate absences, both worth knowing before editing a sample's config:
 
 - **`security.user` is absent on purpose.** A Knowledge Base pod serves no user, opens no inbound

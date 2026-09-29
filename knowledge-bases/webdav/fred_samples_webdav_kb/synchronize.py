@@ -27,7 +27,8 @@ import asyncio
 import logging
 from collections.abc import Mapping
 
-from fred_samples_webdav_kb.document_boundary import Boundary
+from fred_samples_webdav_kb.deployment import WebDavDeployment
+from fred_samples_webdav_kb.document_boundary import Boundary, IngestionPending
 from fred_samples_webdav_kb.plan import Plan, Write, plan_run
 from fred_samples_webdav_kb.report import RunReport
 from fred_samples_webdav_kb.settings import Settings
@@ -35,11 +36,6 @@ from fred_samples_webdav_kb.source import DocumentSource, SourceUnavailable
 from fred_samples_webdav_kb.webdav import CertificateNotTrusted, FileTooLarge
 
 logger = logging.getLogger(__name__)
-
-# Every document costs a fetch from the share and a write that hands it over
-# and waits for Fred to ingest it. Four at a time hides both latencies without
-# turning one team's run into a load test of someone else's web server.
-DEFAULT_CONCURRENCY = 4
 
 # A run where everything fails should say so after a few documents rather than
 # after two thousand.
@@ -51,9 +47,14 @@ async def synchronize(
     settings: Settings,
     source: DocumentSource,
     boundary: Boundary,
-    concurrency: int = DEFAULT_CONCURRENCY,
+    concurrency: int = WebDavDeployment().concurrency,
 ) -> RunReport:
-    """Bring the library to what the share now holds, and say what happened."""
+    """Bring the library to what the share now holds, and say what happened.
+
+    Every document costs a fetch from the share and a write that hands it over
+    and waits for Fred to ingest it; `concurrency` of them at once hides both
+    latencies. The operator sets it, in the pod's `webdav:` section.
+    """
     report = RunReport()
 
     try:
@@ -178,6 +179,11 @@ async def _apply(
                     content=content,
                     version=write.version,
                 )
+            except IngestionPending as error:
+                # Accepted and still being worked on: the library lists it, so
+                # the next run leaves it be. Not a failure, and not a budget.
+                report.still_ingesting(write.source_key, str(error))
+                return
             except Exception as error:  # noqa: BLE001 - one document's failure
                 report.fail("write_failed", str(error), subject=write.source_key)
                 return

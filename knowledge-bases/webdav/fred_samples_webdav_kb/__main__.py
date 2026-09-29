@@ -17,11 +17,21 @@ The image's entry point — the whole integration with Fred.
     python -m fred_samples_webdav_kb publish   # declare this KB, then exit
     python -m fred_samples_webdav_kb run       # serve runs until stopped
 
-The SDK owns both commands. An author writes no plumbing for either.
+The SDK owns both commands. What this adds is the deployment's own part: the
+`webdav:` settings are checked before anything is served, and SIGTERM stops the
+pod cleanly (see `deployment.py`).
 """
 
 from fred_sdk.knowledge_base import knowledge_base_main
 
+from fred_samples_webdav_kb.deployment import load_deployment, stop_on_sigterm
 from fred_samples_webdav_kb.knowledge_base import kb
 
-raise SystemExit(knowledge_base_main(kb))
+stop_on_sigterm()
+load_deployment()
+try:
+    raise SystemExit(knowledge_base_main(kb))
+except KeyboardInterrupt:
+    # Stopped by SIGTERM or Ctrl-C, after the worker has handed back the run it
+    # was serving. The conventional status of a process ended by SIGINT.
+    raise SystemExit(130) from None

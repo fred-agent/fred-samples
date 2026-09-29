@@ -84,6 +84,11 @@ config/configuration.yaml   knowledge_base:   prefix, control_plane_url, knowled
 config/.env                 CONFIG_FILE, and the one secret the YAML names
 ```
 
+A sample may add one section of its own for what its operator decides —
+`webdav:` in [`webdav/`](webdav/) — parsed by a subclass of the SDK's
+`PodConfiguration`, from the same file, by the same loader. Never an
+environment variable.
+
 `security.m2m` is parsed by `M2MSecurity` and `scheduler.temporal` by
 `TemporalSchedulerConfig` — the same model the Control Plane parses for
 Knowledge Base cadence, so both halves of the contract describe Temporal

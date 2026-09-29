@@ -32,7 +32,10 @@ from fred_sdk.knowledge_base import (
     DocumentWaitTimeout,
 )
 
-from fred_samples_webdav_kb.document_boundary import _KnowledgeFlowBoundary
+from fred_samples_webdav_kb.document_boundary import (
+    IngestionPending,
+    _KnowledgeFlowBoundary,
+)
 from fred_samples_webdav_kb.settings import IngestionProfile
 
 TASK_ID = "task-1"
@@ -45,6 +48,7 @@ class FakePublisher:
         self.ending = ending
         self.published: list[tuple[str, bytes, str | None]] = []
         self.waited: list[str] = []
+        self.timeouts: list[float] = []
         self.profiles: list[str] = []
 
     async def publish(
@@ -69,6 +73,7 @@ class FakePublisher:
         self, task_id: str, *, timeout: float = 600.0, poll_interval: float = 2.0
     ) -> DocumentOutcome:
         self.waited.append(task_id)
+        self.timeouts.append(timeout)
         if isinstance(self.ending, Exception):
             raise self.ending
         return self.ending
@@ -133,13 +138,22 @@ async def test_an_ingestion_that_did_not_land_is_this_document_s_failure(
 
 
 async def test_a_wait_that_ends_first_is_not_dressed_up_as_a_write_failure():
-    """The SDK's own error goes through: the task is still running, not lost."""
+    """The task is still running, not lost: said as its own error, naming it."""
     boundary, _ = boundary_over(DocumentWaitTimeout(TASK_ID))
 
-    with pytest.raises(DocumentWaitTimeout) as caught:
+    with pytest.raises(IngestionPending, match=TASK_ID):
         await boundary.publish(relative_path="a.md", content=b"a", version="etag:v1")
 
-    assert caught.value.task_id == TASK_ID
+
+async def test_the_wait_lasts_what_the_deployment_configured():
+    publisher = FakePublisher(landed())
+    boundary = _KnowledgeFlowBoundary(
+        cast(DocumentPublisher, publisher), wait_seconds=1800
+    )
+
+    await boundary.publish(relative_path="a.md", content=b"a", version="v1")
+
+    assert publisher.timeouts == [1800]
 
 
 async def test_an_empty_version_is_offered_as_none_at_all():

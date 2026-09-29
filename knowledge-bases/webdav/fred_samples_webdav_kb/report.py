@@ -46,6 +46,9 @@ class RunReport:
     unchanged: int = 0
     removed: int = 0
     skipped: int = 0
+    # Accepted by Fred and still being ingested when this run stopped waiting.
+    # Neither created nor updated: this run cannot prove either.
+    pending: int = 0
     published_bytes: int = 0
     warnings: list[Issue] = field(default_factory=list)
     errors: list[Issue] = field(default_factory=list)
@@ -65,6 +68,14 @@ class RunReport:
         """
         self.skipped += 1
         self.warn(reason, message, subject=source_key)
+
+    def still_ingesting(self, source_key: str, message: str = "") -> None:
+        """One document Fred is still ingesting. Never an error.
+
+        The library lists it with its version, so the next run leaves it be.
+        """
+        self.pending += 1
+        self.warn("ingestion_pending", message, subject=source_key)
 
     def warn(self, code: str, message: str = "", subject: str | None = None) -> None:
         _add(self.warnings, Issue(code, message, subject))
@@ -86,6 +97,8 @@ class RunReport:
         ]
         if self.skipped:
             parts.append(f"{self.skipped} skipped")
+        if self.pending:
+            parts.append(f"{self.pending} still ingesting")
         if self.errors:
             parts.append(f"{len(self.errors)} failed")
         if not self.exhaustive:
@@ -96,6 +109,7 @@ class RunReport:
         return {
             "exhaustive": self.exhaustive,
             "skipped": self.skipped,
+            "pending": self.pending,
             "published_bytes": self.published_bytes,
         }
 

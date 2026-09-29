@@ -35,6 +35,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import asdict
 
+from fred_samples_webdav_kb.deployment import WebDavDeployment, load_deployment
 from fred_samples_webdav_kb.document_boundary import LoggingBoundary, open_boundary
 from fred_samples_webdav_kb.report import RunReport
 from fred_samples_webdav_kb.settings import (
@@ -198,6 +199,7 @@ def as_json(report: RunReport) -> dict[str, object]:
         "removed": report.removed,
         "unchanged": report.unchanged,
         "skipped": report.skipped,
+        "pending": report.pending,
         "warnings": [asdict(issue) for issue in report.warnings],
         "errors": [asdict(issue) for issue in report.errors],
         "metrics": report.metrics(),
@@ -219,8 +221,12 @@ async def _run(
     # Named a library, and the pod environment is there: the documents really go
     # to Fred, through the same boundary a dispatched run uses. Without one this
     # stays a dry run, which is what makes the tool useful with no Fred at all.
+    # The pod's own `webdav:` settings apply here too, so a run tried by hand
+    # leans on the share and on Fred exactly as a dispatched one would.
+    pod = load_deployment()
+    deployment = pod.webdav if pod is not None else WebDavDeployment()
     boundary = (
-        open_boundary(library_id=library_id, profile=settings.profile)
+        open_boundary(pod, library_id=library_id, profile=settings.profile)
         if library_id
         else LoggingBoundary(profile=settings.profile)
     )
@@ -229,6 +235,7 @@ async def _run(
             settings=settings,
             source=source,
             boundary=boundary,
+            concurrency=deployment.concurrency,
         )
     finally:
         await boundary.aclose()
