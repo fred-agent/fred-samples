@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim AS base
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+ARG FRED_WHEELS
+COPY ${FRED_WHEELS}/ /wheels/
+RUN useradd --uid 10001 --create-home appuser
+
+FROM base AS agents
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -c /wheels/agents-constraints.txt --find-links=/wheels \
+      /wheels/fred_pod-*.whl /wheels/fred_core-*.whl /wheels/fred_sdk-*.whl /wheels/fred_runtime-*.whl \
+      /wheels/fred_samples_agents-*.whl && pip check
+COPY agents/config/*.yaml /app/config/
+# Which agents this image registers. Empty means all of them.
+ARG SAMPLE_AGENTS=""
+ENV FRED_SAMPLES_AGENTS=${SAMPLE_AGENTS}
+USER 10001
+EXPOSE 8010
+CMD ["uvicorn", "fred_samples_agents.main:app", "--host", "0.0.0.0", "--port", "8010"]
+
+FROM base AS application
+ARG SAMPLE_APP
+COPY apps/${SAMPLE_APP}/api/requirements.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -c /wheels/core-constraints.txt --find-links=/wheels /wheels/fred_pod-*.whl /wheels/fred_core-*.whl -r requirements.txt && pip check
+COPY apps/${SAMPLE_APP}/api/*.py ./
+# Applications that keep their own SQLite rows mount this directory; it grants
+# no access to any Fred datastore.
+RUN mkdir -p /data && chown 10001:10001 /data
+USER 10001
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

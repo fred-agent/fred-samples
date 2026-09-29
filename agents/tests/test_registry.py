@@ -18,9 +18,10 @@ model, an MCP server, or the network — that's what --disable-socket
 enforces.
 """
 
+import pytest
 from fred_sdk.contracts.models import GraphAgentDefinition
 
-from fred_samples_agents.registry import REGISTRY
+from fred_samples_agents.registry import REGISTRY, build_registry
 
 EXPECTED_AGENT_IDS = {
     "fred.samples.assistant",
@@ -37,6 +38,12 @@ def test_registry_keys_match_agent_ids():
 
 def test_expected_sample_agents_are_registered():
     assert EXPECTED_AGENT_IDS <= set(REGISTRY.keys())
+
+
+def test_an_agent_filter_selecting_nothing_stops_startup(monkeypatch):
+    monkeypatch.setenv("FRED_SAMPLES_AGENTS", "document-review")
+    with pytest.raises(RuntimeError, match="selects no sample agent"):
+        build_registry()
 
 
 def test_every_graph_agent_builds_a_valid_workflow():

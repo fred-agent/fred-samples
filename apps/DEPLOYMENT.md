@@ -1,53 +1,61 @@
 # Building and deploying a Fred application
 
-A step-by-step walkthrough covering both sample applications in this directory.
+A step-by-step walkthrough covering the three sample applications in this
+directory.
 
-Use it two ways: to deploy either sample, or as the template for your own
+Use it two ways: to deploy any of the samples, or as the template for your own
 application by substituting your `app_id` throughout.
 
 ---
 
-## The two samples
+## The three samples
 
-They solve the same shape of problem and differ in exactly one decision — **who
-writes the durable record.** That single choice is what decides whether the
-application needs a datastore and a secret of its own.
+They solve the same shape of problem and differ in one decision — **who writes
+the durable record.** That single choice decides whether the application needs a
+store of its own and whether it offers agents any tools at all.
 
-| | [`apps/document-triage/`](document-triage/) | [`apps/progress-tracker/`](progress-tracker/) |
-| --- | --- | --- |
-| `app_id` | `document-triage` | `progress-tracker` |
-| What it does | review a folder of documents, mark each reviewed / needs-work | track long-running tasks and the decisions taken along the way |
-| Who writes | **the human**, under their own bearer | **agents**, through the app's API |
-| Storage | the team's Knowledge Flow workspace | SQLite owned by the app |
-| Secrets | **none** | `progress-tracker-service` (shared key) |
-| Volume | none — the API is stateless | `emptyDir` (or a PVC) |
-| Capability | read-only: reads ports, holds no credential | read/write: calls the app's API with the shared key |
-| Copy it when | agents inform a decision a person records | you have accepted the caveats below |
+| | [`apps/document-triage/`](document-triage/) | [`apps/progress-tracker/`](progress-tracker/) | [`apps/review-board/`](review-board/) |
+| --- | --- | --- | --- |
+| `app_id` | `document-triage` | `progress-tracker` | `review-board` |
+| What it does | review a folder of documents, mark each reviewed / needs-work | track long-running tasks and the decisions taken along the way | run a corpus document through specialist agents and watch each stage land |
+| Who writes | **the human**, under their own bearer | **agents**, through the app's own tools | **agents**, through the app's own tools |
+| Storage | the team's Knowledge Flow workspace | SQLite owned by the app | OpenSearch indices owned by the app |
+| Secret | `document-triage-security` | `progress-tracker-security` | `review-board-security` |
+| Volume | none — the API is stateless | `emptyDir` (or a PVC) | none — OpenSearch is external |
+| Agent tools | none | `/mcp`, granted as `mcp-progress-tracker` | `/mcp`, granted as `mcp-review-board` |
+| Copy it when | agents inform a decision a person records | agents advance a record the app owns | several agents advance one record in stages |
 
-**Start from `document-triage` unless you know you need the other.** Agents may
-read team-shared files but may only *mutate* inside their own subtree
-(FILES-04, "agents never share"), so an application whose agents write shared
-state has to keep that state outside Fred and reach it with a credential Fred
-neither issues nor validates. `progress-tracker` shows how that is done and is
-explicit about what it costs; `document-triage` shows how to not need it.
+**Start from `document-triage` unless you know you need agents to write.**
+Agents may read team-shared files but may only *mutate* inside their own
+subtree, so an application whose agents advance shared state has to keep that
+state in a store it owns and admit every write through its own API. The other
+two show how that is done; `document-triage` shows how to not need it.
+
+Every sample is a first-party backend: it validates the caller's bearer against
+Keycloak itself and reads the team's grant straight from Fred's existing
+OpenFGA. None of them holds a shared agent key.
 
 ---
 
 ## What you are building
 
-Two container images that Fred does not build, plus one optional Python package:
+Two container images that Fred does not build, plus an optional tool mount on
+the API you already wrote:
 
 | Piece | What it is | Where Fred meets it |
 | --- | --- | --- |
 | UI image | static bundle in any web server | `/apps/<app_id>/`, rendered in a frame |
 | API image | any HTTP service, any language | `/app-services/<app_id>/` |
-| Capability | Python package in the agents pod | gives agents tools to touch your data |
+| Tool mount | routes the API already serves, offered over MCP at `/mcp` | catalogued as an MCP server the agent runtime calls |
 
-The capability is only needed if agents must read or advance your data. A
+No sample ships a Python capability package: nothing here is installed into the
+agents image and the runtime imports no application code. The tool mount is only
+needed if agents must read or advance your data — `document-triage` has none. A
 UI-only application needs neither it nor the API.
 
 Throughout, `<app>` stands for the sample folder you are deploying —
-`document-triage` or `progress-tracker` — which is also its `app_id`.
+`document-triage`, `progress-tracker` or `review-board` — which is also its
+`app_id`.
 
 ---
 
@@ -57,7 +65,20 @@ Throughout, `<app>` stands for the sample folder you are deploying —
 - Platform-admin access, to grant the application to a team
 - Somewhere the cluster can pull images from — a registry, or `k3d image import`
   for local work
-- For `document-triage` only: a reachable Knowledge Flow with documents ingested
+- An enabled confidential Keycloak client for this application, and Fred's
+  login-client audience `app` in the browser token's `aud` — a first-party
+  backend verifies that claim strictly (see
+  [review-board's audience section](review-board/README.md#4-put-the-audience-in-the-browser-token))
+- An OpenFGA API token with read access to Fred's existing store. The backend
+  reads the shared authorization model; it never creates a store or syncs a
+  schema
+- For `document-triage` and `review-board`: a reachable Knowledge Flow with
+  documents ingested
+- For `review-board`: an OpenSearch the API pod can reach, with credentials that
+  stay in the application's namespace
+
+Startup fails fast when any of these is missing, rather than turning up as a
+refused call later.
 
 > If your Knowledge Flow runs with authentication relaxed for development, the
 > outsider check in Step 10 passes for the wrong reason and proves nothing. Run
@@ -100,6 +121,23 @@ RUN printf '%s\n' \
   '  location = /healthz { return 200 "ok"; add_header content-type text/plain; }' \
   '}' > /etc/nginx/conf.d/default.conf
 ```
+
+That is the minimum. A page serving more than one file needs its own rules for
+them: `review-board` adds a location block giving its `.mjs` modules a
+JavaScript media type, without which the browser refuses to execute them.
+
+Every sample here also installs Fred's frontend packages rather than carrying
+copies of them, which adds a Node stage ahead of nginx. All three pin
+`@fred-oss/design-tokens` and `@fred-oss/iframe-sdk`, and copy out a stylesheet
+and a self-contained ES module: the palette and the frame's side of the host
+protocol. `review-board` takes the typeface with the palette as well, and keeps
+a thin class of its own around the client for the request bookkeeping its
+interface depends on.
+
+No bundler is involved and the `docker build` command is unchanged, but the
+build now needs the npm registry. Exclude the installed files from the page
+fallback, as all three do, so that a missing one answers 404 instead of quietly
+serving the page under its name and failing unstyled.
 
 Build your bundle with `/apps/<app_id>/` as its base path — Fred forwards the
 whole prefix upstream, so the absolute asset URLs your bundler bakes in resolve
@@ -171,30 +209,49 @@ registered and has an upstream, then forwards the caller's `Authorization`
 header untouched. Any authenticated user in the realm reaches you. Your service
 is the only thing standing between them and your data.
 
-Ask the Control Plane the question it already answers — one call covers both
-membership and grant, because grants are team to capability:
+**The Control Plane is not an authorization service.** Read the grant where it
+lives instead: one ReBAC check covers both membership and grant, because grants
+are team to capability, and no request leaves the pod per call.
 
 ```python
-async def require_entitled(team_id: str, authorization: str | None = Header(None)) -> str:
-    if not authorization:
-        raise HTTPException(401, "missing_bearer")
-    url = f"{CONTROL_PLANE}/control-plane/v1/teams/{team_id}/applications"
+def _security_configuration() -> SecurityConfiguration:
+    # Only the two variable names that are this application's own; every
+    # shared rule lives in the library rather than a copy per application.
+    return security_configuration_from_env(
+        m2m_secret_env="MY_APP_M2M_CLIENT_SECRET",  # pragma: allowlist secret
+        openfga_token_env="MY_APP_OPENFGA_API_TOKEN",
+        delegation_env="FRED_DELEGATION",
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Process-lifetime, and a failure here fails startup rather than the
+    # first request.
+    sdk = await rebac_sdk_factory(_security_configuration(), kpi_writer=KPI)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get(url, headers={"authorization": authorization})
-    except httpx.HTTPError:
-        raise HTTPException(403, "entitlement_check_unavailable")   # fail CLOSED
-    if r.status_code == 403:
-        raise HTTPException(403, "not_a_team_member")
-    if r.status_code != 200:
-        raise HTTPException(403, "entitlement_check_failed")
-    if not any(i.get("id") == APP_ID for i in r.json().get("items", [])):
-        raise HTTPException(403, "app_not_granted_to_team")
+        app.state.rebac_sdk = sdk
+        yield
+    finally:
+        await sdk.close()
+
+
+async def require_entitled(team_id: str, user: CurrentUser, rebac: Rebac) -> str:
+    await rebac.check_application_access(user, team_id=team_id, app_id=APP_ID)
     return team_id
 ```
 
-Use the **caller's** token, not a service credential, and fail closed when the
-check itself fails.
+`register_exception_handlers(app)` turns the refusal into the response. **A
+403 is a decision about the caller; a 5xx is not.** When the authorization
+dependency cannot be consulted the request still fails closed, but nothing was
+decided, so the failure surfaces as a server error rather than a refusal. Do not
+collapse the two; a client that retries an outage must not retry a refusal.
+With delegation on, account-status enforcement adds a narrower signal: `403`
+`account_suspended`, or `503` `account_status_unavailable` when the check cannot
+be answered, each with an `X-Fred-Denial-Cause` header.
+
+Use the **caller's** identity for the decision, never a service credential. The
+M2M client is this process's own outbound identity and validates nobody.
 
 `api/Dockerfile` — note the numeric user:
 
@@ -223,7 +280,7 @@ docker build -t <app>-ui:sample  apps/<app>/ui
 docker build -t <app>-api:sample apps/<app>/api
 ```
 
-Concretely, for either sample:
+Concretely, for one of the samples:
 
 ```bash
 docker build -t document-triage-ui:sample    apps/document-triage/ui
@@ -231,6 +288,9 @@ docker build -t document-triage-api:sample   apps/document-triage/api
 # or
 docker build -t progress-tracker-ui:sample   apps/progress-tracker/ui
 docker build -t progress-tracker-api:sample  apps/progress-tracker/api
+# or
+docker build -t review-board-ui:sample       apps/review-board/ui
+docker build -t review-board-api:sample      apps/review-board/api
 ```
 
 ## Step 5 — Get them where the cluster can pull
@@ -250,104 +310,85 @@ survive cluster recreation** — re-import after any `k3d cluster delete`.
 Its own namespace. Fred reaches your services only by DNS name, so they can live
 anywhere.
 
+**The Secret comes first.** No sample manifest declares one — each references
+`<app>-security` by `secretKeyRef`, so applying the manifest without it leaves
+the API pod in `CreateContainerConfigError`. Create it out of band, in the
+application's namespace, and never copy it into the Fred or agents namespace:
+
+```bash
+kubectl create namespace <app>
+kubectl create secret generic <app>-security -n <app> \
+  --from-literal=m2m-client-secret="$M2M_CLIENT_SECRET" \
+  --from-literal=openfga-api-token="$OPENFGA_API_TOKEN"
+```
+
+`review-board` adds `opensearch-username` and `opensearch-password` to that
+Secret; both references are optional, so omit them when OpenSearch has no basic
+authentication. Each sample's README gives its own exact key names.
+
 ```bash
 kubectl apply -f apps/<app>/deploy.yaml
 ```
 
 Edit the addresses marked `EDIT` in that manifest first — they name your Fred
-namespace, and nothing else in the file is cluster-specific.
+namespace and your realm, and nothing else in the file is cluster-specific.
 
-**For `document-triage`, that is the whole step.** No secret, no volume, no
-database: the service is stateless and every record lands in the team's
-Knowledge Flow workspace, written with the caller's own bearer.
+**For `document-triage` and `review-board`, that is the whole step.** Neither
+provisions storage: triage records land in the team's Knowledge Flow workspace
+written with the caller's own bearer, and review-board's indices live in an
+OpenSearch it does not deploy.
 
-**For `progress-tracker`, two more things.** Its records live in SQLite on an
+**For `progress-tracker`, one more thing.** Its records live in SQLite on an
 `emptyDir`, so there is no database to provision — and no records after a pod
 restart; point `PROGRESS_TRACKER_DB` at a PersistentVolumeClaim when you want
-them to outlive one. And it needs the shared key its capability authenticates
-with. Secrets are namespace-scoped, so one value goes in two namespaces: the API
-reads it, and the agents pod presents it. Keep the value out of the repo.
+them to outlive one.
 
-```bash
-KEY=$(openssl rand -hex 32)
-# the application's namespace, where the API reads it
-kubectl create secret generic progress-tracker-service -n progress-tracker --from-literal=key="$KEY"
-# the agents pod's namespace, where the capability presents it
-kubectl create secret generic progress-tracker-service -n <ns>             --from-literal=key="$KEY"
-```
+### The agent half — a tool server on the routes you already wrote
 
-### The agent half — installing the capability
+Only needed if agents must read or advance your records. An application offers
+its own routes as a tool server rather than shipping a package into the agents
+image, so nothing here edits Fred's own Dockerfile or its dependency list, and
+the runtime imports no application code.
 
-Only needed if agents must read or write your records. Installing the package
-*is* the registration: the pod discovers it at boot through the
-`fred.capabilities` entry point, so nothing here edits Fred's own Dockerfile or
-its dependency list.
+Tag the routes that become tools. Tagging is the whole allowlist: an untagged
+route stays reachable by the UI and invisible to an agent. Build the mount after
+the routes, because the tool list is snapshotted from the OpenAPI schema at
+construction, and serve it at `/mcp`. The mount is `DelegatedFastApiMCP` from
+`fred_core.security.mcp_delegation_fastapi`, behind fred-core's optional `mcp`
+extra — a service that mounts no tools does not carry it. Declare the grant
+parameters as an application-wide dependency; without that a tool whose route
+takes no body silently acts for nobody.
 
-Add it to the dependencies of the pod that should carry it. In this repository
-that is already done — `agents/pyproject.toml` depends on it by path, so the
-capability is in the image `dockerfiles/Dockerfile` builds:
+Catalog that endpoint in the agent runtime's `mcp_catalog.yaml` with
+`auth_mode: user_token`, or `delegated` where the runtime acts for people, and
+keep `team_scope: admin_gated` so activation stays an explicit administrator
+decision. **The catalog id becomes a team capability in its own right** —
+`mcp-<app_id>` — granted separately from `app__<app_id>`.
+That separation is the point: a team can hold the application, so its people see
+the page, while no agent may touch the record. Set the backend's
+`MCP_SERVER_ID` to that exact id, because the tool routes check that grant
+directly.
 
-```toml
-dependencies = [
-  "fred-capability-document-triage",
-  "fred-capability-progress-tracker",
-]
+A graph agent additionally has to declare that it offers capabilities, because
+graph definitions do not by default; without that its tool server is never
+advertised and the agent can never be enabled for a team.
 
-[tool.uv.sources]
-fred-capability-document-triage  = { path = "../apps/document-triage/capability",  editable = true }
-fred-capability-progress-tracker = { path = "../apps/progress-tracker/capability", editable = true }
-```
+**A tool call carries the identity of the person driving it,** and re-enters the
+same team and application admission the interface uses, so an agent reads and
+writes exactly what that person can. On an interactive turn Fred's MCP client
+sends the caller's own bearer. Where a run continues without a person present,
+a workload credential holding the delegation caller role carries a grant
+naming the person, the run and the agent, and the mount resolves that grant to
+an asserted identity — verified at the mount, never read from the tool
+arguments, so a model cannot name a different subject. There is no service-key
+fallback and no shared key: an application authenticates a caller, never a
+peer service.
 
-For a pod you do not own the build of, install it into that pod's environment
-instead — `uv pip install -e apps/<app>/capability`, or a layer over that image
-that does the same. Either way, verify by **importing it**, not by listing entry
-points: a broken install still advertises its entry point while the import
-raises `ModuleNotFoundError`.
-
-```bash
-kubectl exec -n <ns> deploy/<agents-deployment> -- python -c \
-  "import fred_capability_document_triage.capability as m; print(m.DocumentTriageCapability)"
-```
-
-#### `document-triage` — nothing more to configure
-
-Its capability holds no credential and makes no outbound call of its own. It
-reads `ctx.services.document_folders`, `document_summarize` and `workspace_fs`,
-whose adapters keep the runtime's token private. If those ports are absent it
-logs a warning and contributes **no tools**, rather than half a toolset that
-fails at call time. There is no env var and no secret for this half.
-
-It also never writes. Agents may read team-shared files but may only *mutate*
-inside their own subtree (FILES-04, "agents never share"), so the human commits
-every record through the application, under their own identity.
-
-#### `progress-tracker` — two settings and a shared key
-
-Without the API address its capability contributes no tools at all, quietly;
-without the key every call it makes is refused. `--prefix` with `--keys` turns
-the secret's `key` entry into `PROGRESS_TRACKER_SERVICE_KEY`.
-
-```bash
-kubectl set env deployment/<agents-deployment> -n <ns> \
-  PROGRESS_TRACKER_API_BASE=http://progress-tracker-api.progress-tracker.svc.cluster.local:8000
-kubectl set env deployment/<agents-deployment> -n <ns> \
-  --from=secret/progress-tracker-service --keys=key --prefix=PROGRESS_TRACKER_SERVICE_
-```
-
-**That key is this sample's own invention, not a Fred mechanism.** Fred neither
-issues nor validates it, and it bypasses this application's entitlement check
-outright for whoever holds it. It exists only because a capability currently has
-no platform-supplied way to authenticate an outbound call; the platform answer
-is a delegated-downstream-auth design that is not implemented yet. Read the
-[README section](progress-tracker/README.md#the-service-key-is-this-samples-own-not-a-fred-mechanism)
-on it before carrying the idea into a real application — and note that
-`document-triage` needs no such key precisely because its agents do not write.
-
-**Identity comes from the runtime, never from a tool argument.** The capability
-reads `ctx.identity.session_id` and sends it with each write; the UI cannot.
-That asymmetry is what lets the application show which entries an agent wrote
-and which conversation they came from — attribution you get for free rather than
-by trusting the model to report itself honestly.
+**Identity comes from the runtime, never from a tool argument.** A model that
+supplies a team or a subject is supplying display metadata; the platform
+replaces a team argument with the active collaborative team before the tool ever
+sees it. That is attribution you get for free rather than by trusting the model
+to report itself honestly.
 
 ### Showing conversation history in your application
 
@@ -379,8 +420,8 @@ of navigating, record what the user intends and let the agent side pick it up:
    keyed on the caller's own subject, with a TTL so a forgotten click cannot
    hijack a conversation hours later.
 2. The user opens a chat themselves and just starts talking.
-3. On the first tool call of a session with no task yet, the capability claims
-   the pin and links the session.
+3. On the first tool call of a session with no task yet, the tool claims the pin
+   and links the session.
 
 The claim runs inside one write transaction, so two sessions starting at once
 cannot both take the pin: the second waits, finds it gone, and reports no pin
@@ -391,7 +432,8 @@ a session, so a prompt cannot redirect the pin to someone else's work.
 ## Step 7 — Register it, in both halves
 
 This is where most first deployments fail. Two places, one `app_id`, and
-**nothing cross-checks them**.
+**nothing cross-checks them**. An application with agent tools has a third
+registration as well — its MCP catalog entry, covered in Step 6.
 
 **Half 1 — the catalog** (control-plane values). Owns what teams see and the
 capability that authorization is granted against. No proxy upstream here:
@@ -420,6 +462,15 @@ platform:
       description:
         en: "Track long-running work and the decisions taken along the way."
       enabled: true
+    - app_id: review-board
+      ui_prefix: /apps/review-board
+      version: 0.1.0
+      icon: checklist
+      display_name:
+        en: "Review Board"
+      description:
+        en: "Watch several agents report progress on one task."
+      enabled: true
 ```
 
 **Half 2 — the routes** (frontend container env). Owns the server-side
@@ -440,6 +491,12 @@ env:
           "app_id": "progress-tracker",
           "ui_upstream": "http://progress-tracker-ui.progress-tracker.svc.cluster.local:80",
           "service_upstream": "http://progress-tracker-api.progress-tracker.svc.cluster.local:8000",
+          "service_required": true
+        },
+        {
+          "app_id": "review-board",
+          "ui_upstream": "http://review-board-ui.review-board.svc.cluster.local:80",
+          "service_upstream": "http://review-board-api.review-board.svc.cluster.local:8000",
           "service_required": true
         }
       ]
@@ -538,8 +595,12 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json
   "$FRED/control-plane/v1/admin/capabilities/app__<app>/teams/$TEAM_ID"
 ```
 
-That is `app__document-triage` or `app__progress-tracker` — the `app__` prefix
-plus the `app_id`, which is also the sample folder name.
+That is `app__document-triage`, `app__progress-tracker` or `app__review-board` —
+the `app__` prefix plus the `app_id`, which is also the sample folder name.
+
+**A sample with agent tools needs a second grant.** `mcp-progress-tracker` and
+`mcp-review-board` are separate capabilities, granted the same way, and the
+application grant does not imply them. `document-triage` has neither.
 
 ## Step 9 — Verify, in this order
 
@@ -561,6 +622,8 @@ curl -H "Authorization: Bearer $TOKEN" \
   $FRED/app-services/document-triage/teams/$TEAM_ID/folders                  # 200
 curl -H "Authorization: Bearer $TOKEN" \
   $FRED/app-services/progress-tracker/teams/$TEAM_ID/tasks                   # 200
+curl -H "Authorization: Bearer $TOKEN" \
+  $FRED/app-services/review-board/teams/$TEAM_ID/tasks                       # 200
 
 # 5. open it in Fred — the frame should render
 ```
@@ -577,7 +640,13 @@ curl -H "Authorization: Bearer $OUTSIDER" \
   $FRED/app-services/document-triage/teams/$TEAM_ID/folders    # expect 403
 curl -H "Authorization: Bearer $OUTSIDER" \
   $FRED/app-services/progress-tracker/teams/$TEAM_ID/tasks     # expect 403
+curl -H "Authorization: Bearer $OUTSIDER" \
+  $FRED/app-services/review-board/teams/$TEAM_ID/tasks         # expect 403
 ```
+
+A 5xx here is not a pass. It means the authorization dependency could not be
+consulted, so nothing was decided about this caller — fix the outage and run the
+check again.
 
 Repeat for a user who *is* in a team whose team was never granted the app —
 that case is the one most often missed.
@@ -599,6 +668,9 @@ Symptom, cause, fix.
 | Frame shows “did not respond” after ~15s | UI server 301s the bare prefix with an absolute `Location` carrying the container's host | `absolute_redirect off` + serve the bare prefix directly. Browsers cache the 301, so re-fetch that URL after fixing |
 | 502, log says `could not be resolved` | Bare Service name in `FRONTEND_APPLICATIONS_JSON` | Use `<svc>.<namespace>.svc.cluster.local` |
 | Pod `CreateContainerConfigError`, “cannot verify user is non-root” | Image ends `USER <name>` under `runAsNonRoot` | Use a numeric `USER`, or set `runAsUser` |
+| Pod `CreateContainerConfigError`, a `secretKeyRef` not found | The manifest declares no Secret; `<app>-security` was never created | Create it in the application's namespace before applying the manifest |
+| Frame and tool calls all answer 401 `Invalid token` | The browser token lacks `app`, the API's `KEYCLOAK_USER_AUDIENCE`, in `aud` | Add the audience mapper ([review-board's audience section](review-board/README.md#4-put-the-audience-in-the-browser-token)), then sign in again |
+| API answers 5xx on every request | Its OpenFGA or Keycloak endpoint is unreachable, so the authorization dependency never decided | Fix the endpoint. A 5xx is an outage, not a refusal — do not read it as a working deny |
 | API 500s on every write, `attempt to write a readonly database` | The mounted volume is not writable by the image's uid | `fsGroup` on the pod matching the container `USER` (`deploy.yaml` sets `10001`) |
 | Task records vanish after a restart | `emptyDir` lives and dies with the pod | Swap it for a PersistentVolumeClaim and repoint `PROGRESS_TRACKER_DB` |
 | App in the catalog but frame 404s | Registered in the catalog half only | Add the gateway half |

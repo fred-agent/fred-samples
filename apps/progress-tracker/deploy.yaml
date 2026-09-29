@@ -1,11 +1,19 @@
 # The sample's own workloads, in their own namespace.
 #
-# Nothing here is special to Fred: two ordinary Deployments and Services. Fred
-# reaches them only by the Service DNS names given in FRONTEND_APPLICATIONS_JSON,
-# which is why an application can live in any namespace.
+# Two ordinary Deployments and Services. Fred reaches them only by the Service
+# DNS names given in FRONTEND_APPLICATIONS_JSON, which is why an application
+# can live in any namespace.
 #
-# TO ADAPT THIS TO YOUR CLUSTER, edit only the two addresses marked EDIT below.
-# Everything else is self-contained.
+# The API is a first-party backend: it validates every caller's bearer itself
+# and reads Fred's existing OpenFGA store directly, so it needs its own
+# Keycloak M2M client and its own OpenFGA API token. Create
+# `progress-tracker-security` out of band as described in README.md.
+#
+# One API serves both the iframe REST routes and the streamable HTTP MCP
+# endpoint at /mcp. Agents authenticate to MCP with the current user's bearer;
+# there is no shared service key and no Secret reaches the Fred agents namespace.
+#
+# TO ADAPT THIS TO YOUR CLUSTER, edit the values marked EDIT below.
 ---
 apiVersion: v1
 kind: Namespace
@@ -68,11 +76,6 @@ spec:
           imagePullPolicy: IfNotPresent
           ports: [{ containerPort: 8000 }]
           env:
-            # EDIT: fully qualified, because this service lives in another
-            # namespace and the entitlement check must reach Fred's control
-            # plane. Substitute your Fred namespace for `fred`.
-            - name: CONTROL_PLANE_BASE
-              value: http://control-plane-backend.fred.svc.cluster.local:8222
             # EDIT: read-only, used to show the conversations pinned to a task.
             # The caller's own bearer is forwarded, so this reads no one else's
             # chat. Point it at whichever agent pod serves your conversations --
@@ -80,13 +83,40 @@ spec:
             # http://fred-samples-agents.<ns>.svc.cluster.local:8010/samples/agents/v1
             - name: RUNTIME_BASE
               value: http://fred-agents.fred.svc.cluster.local:80/fred/agents/v2
-            # Shared with the agents pod so the capability can call this API
-            # as itself. This sample's own stopgap, not a Fred mechanism -- see
-            # README.md before reusing the idea. Never commit the value; create
-            # the secret out of band (README).
-            - name: PROGRESS_TRACKER_SERVICE_KEY
+            # EDIT: exact `iss` of the incoming UI bearer. It must also be
+            # reachable from this pod for JWKS discovery.
+            - name: KEYCLOAK_REALM_URL
+              value: https://fred.example.com/realms/fred
+            # EDIT: the audience of Fred's login client, `app` by default. The
+            # browser token must carry it in `aud`; see README.md.
+            - name: KEYCLOAK_USER_AUDIENCE
+              value: app
+            # Must exactly match the MCP catalog id: the agent-facing routes
+            # check this team capability in addition to application entitlement.
+            - name: MCP_SERVER_ID
+              value: mcp-progress-tracker
+            # EDIT: this backend's own enabled confidential/M2M client.
+            - name: KEYCLOAK_M2M_CLIENT_ID
+              value: progress-tracker-service
+            - name: PROGRESS_TRACKER_M2M_CLIENT_SECRET
               valueFrom:
-                secretKeyRef: { name: progress-tracker-service, key: key }
+                secretKeyRef:
+                  name: progress-tracker-security
+                  key: m2m-client-secret
+            # EDIT: fully qualified address of Fred's existing OpenFGA. The
+            # Control Plane remains owner of the store and authorization model.
+            - name: OPENFGA_API_URL
+              value: http://openfga.fred.svc.cluster.local:9080
+            - name: OPENFGA_STORE_NAME
+              value: fred
+            # Optional: uncomment when the deployment pins an existing model.
+            # - name: OPENFGA_AUTHORIZATION_MODEL_ID
+            #   value: "<existing-model-id>"
+            - name: PROGRESS_TRACKER_OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: progress-tracker-security
+                  key: openfga-api-token
             - name: PROGRESS_TRACKER_DB
               value: /data/progress-tracker.db
           volumeMounts:
