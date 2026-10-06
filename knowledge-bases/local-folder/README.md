@@ -74,8 +74,12 @@ Fred and no Temporal:
 
 ```bash
 make declaration                   # what `publish` would send
-make sync ROOT=/path/to/your/notes # one synchronization run
+CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make sync ROOT=/path/to/your/notes
 ```
+
+The explicit configuration paths prevent an existing local `.env` or YAML from
+turning this exercise into a write to Fred. Use a path without spaces with the
+Makefile wrapper; the developer CLI accepts a quoted `--root-path` directly.
 
 `sync` prints the run's result as JSON and logs one line per document it would
 publish. Run it twice: the second run reports everything `unchanged`, because the
@@ -103,7 +107,9 @@ A team fills these in per instance; the published declaration carries the
 
 ## The ledger
 
-Fred reports counters, not state. What "already synchronized" means is this
+The handler returns counters; successful publication means acceptance by the
+ingestion API, not proof of finished indexing. This sample does not wait for
+ingestion tasks. What "already synchronized" means is this
 implementation's business, so it keeps a JSON sidecar per instance, mapping
 relative path to content hash:
 
@@ -111,8 +117,11 @@ relative path to content hash:
 ${XDG_STATE_HOME:-~/.local/state}/fred-samples-local-folder-kb/<instance-id>.json
 ```
 
-Set `FRED_SAMPLES_KB_STATE_DIR` to put it elsewhere. Fred never sees this file,
-and gives an implementation no place to keep one.
+Set `FRED_SAMPLES_KB_STATE_DIR` to put it elsewhere, outside the checkout.
+Use a separate directory or CLI `--instance-id` for dry runs: their ledger must
+not be reused for a connected run, or unchanged files may be skipped without
+ever having been ingested. Preserve a connected ledger for deletion tracking;
+losing it loses knowledge of files that have already disappeared from the source.
 
 ---
 

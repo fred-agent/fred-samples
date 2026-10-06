@@ -1,12 +1,14 @@
 # CLI Notes For Team Of 3 Sample
 
-This document only uses CLI commands verified in the installed package versions.
+Run these commands from `agents/` after completing the root quick start.
+The pod and CLI run in separate terminals. Model routing remains model-dependent.
 
 ## 1. Actually available CLI commands (installed version)
 Verified console entry points for installed Fred packages:
 - `fred-agents-cli`
 
-For this starter package, `fred-runtime==0.1.19` exposes `fred-agents-cli` as the runtime chat client.
+The package declares `fred-runtime>=4.0.0`; `fred-agents-cli` is its chat client.
+Check `.venv/bin/fred-agents-cli --help` for the installed version’s options.
 
 ## 2. How to access CLI help
 From `agents/`:
@@ -70,7 +72,7 @@ The coordinator's own routing decision is a `thought`-channel event
 (`phase="planning"`, `title="Choosing a specialist"`) with a `conclusion`
 field naming the chosen member — visible in the chat UI's "Thought…" panel
 and, from the CLI, in `--verbose --stream` output. Child replies carry no
-routing marker; see `AGENT-THINKING-API-RFC.md` Amendment C.
+routing marker. Inspect the events rather than expecting that marker in the final answer.
 
 ## 6. Capturing routing evidence/logs
 Use chat client verbose/stream flags:
@@ -83,7 +85,3 @@ Use chat client verbose/stream flags:
 ```
 
 `--verbose` prints intermediate runtime events; `--stream` renders SSE events live.
-
-## 7. If a “new CLI” is expected
-In this starter package's installed `fred-runtime==0.1.19`, the supported runtime console script is `fred-agents-cli`.
-If a future runtime release renames the CLI again, verify the available entry points in `.venv/bin/` or the package metadata before updating the starter docs.

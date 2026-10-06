@@ -39,10 +39,10 @@ holds. It keeps nothing of its own:
 | A document's identity | its path on the share, which Fred stores as the source key |
 | A document's version | the share's entity tag, given to Fred and read back — equal tags mean equal bytes |
 
-That trade buys something the Git sample cannot have: because the listing is
-**exhaustive**, a file that is gone really is gone, and the run can retract its
-document. The Git sample's full pass can never do that — it has no inventory to
-compare against.
+Because the listing is **exhaustive**, a file that is gone can be retracted
+after comparison with the library. The Git sample also reconciles against the
+library during a full pass; its incremental path instead uses differences
+between revisions. WebDAV performs the full comparison on every run.
 
 **Nothing is remembered between runs, which is what makes this self-healing.**
 A write is *accepted*, not finished: Knowledge Flow answers 202 with a task

@@ -1,7 +1,8 @@
 # Sample MCP servers
 
 Demo dependencies for the sample agents — not production services. Each one is self-contained,
-serves deterministic mock data, and is started by hand from its own folder.
+serves mock data, and is started by hand from its own folder. The minimal template
+generates random numbers, so its output deliberately varies.
 
 All five live under `servers/mcp/python/`:
 

@@ -32,7 +32,7 @@ Or manually:
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install fastapi uvicorn "mcp[fastapi]"
+pip install fastapi uvicorn "mcp==1.28.1"
 uvicorn bank_core_mcp_server.server_mcp:app --host 127.0.0.1 --port 9801 --reload
 ```
 

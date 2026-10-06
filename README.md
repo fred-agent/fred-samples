@@ -47,7 +47,7 @@ A plain conversational agent with no tool dependencies. Good for verifying the
 pod and model key work before starting any MCP server.
 
 ```
-Agent ID: assistant
+Agent ID: fred.samples.assistant
 Requires: nothing — just a model API key
 ```
 
@@ -79,8 +79,8 @@ What's the capital of France?
 
 ### Bank Transfer — HITL demo
 
-A workflow agent that executes a fund transfer through two mandatory human
-confirmation gates.
+A workflow agent that simulates a fund transfer. It always asks for final
+confirmation and asks for an additional risk approval when risk is elevated.
 
 ```
 Agent ID: fred.samples.bank_transfer.graph
@@ -304,7 +304,7 @@ An author writes no plumbing.
 ```bash
 cd knowledge-bases/local-folder
 make declaration                   # what `publish` would send to Fred
-make sync ROOT=/path/to/your/notes # one run, with no Fred and no Temporal
+CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make sync ROOT=/path/to/your/notes
 ```
 
 A run writes documents through Knowledge Flow's REST API once the pod's
@@ -345,74 +345,109 @@ while `curl` against the same URL succeeds.
 
 ---
 
-## Quick start
+## Quick start — one assistant, no platform required
 
-### 1. Prerequisites
+Start with the general assistant, then try Hello Graph. Neither requires an MCP
+server, a browser UI or a running Fred deployment. Model calls do require access
+to the provider configured in `agents/config/models_catalog.yaml`.
 
-| Tool | Version |
-|------|---------|
-| Python | 3.12 |
-| An OpenAI API key | — |
+### 1. Prerequisites and dependency choice
 
-### 2. Configure the agents pod
+- Python **3.12** with `venv`, `make`, and network access for dependency installation.
+- A key for the configured model provider. The checked-in catalog currently points
+  both `chat` and `language` at **Mistral** (`mistral-medium-2508`), through an
+  OpenAI-compatible client. Put the **Mistral API key** in `OPENAI_API_KEY`; the
+  variable name identifies the client adapter, not the provider you must pay.
+- For the default development path, sibling checkouts:
 
-```bash
-cp agents/config/env.template agents/config/.env
-# edit agents/config/.env and set your OPENAI_API_KEY
+```text
+~/Fred/
+├── fred/
+└── fred-samples/
 ```
 
-### 3. Start the MCP servers you need
+The Makefiles create their virtual environments and install `uv`. Python packages
+resolve Fred libraries from the sibling checkout by default. To use published
+packages without that checkout, run `make dev-pypi` from `agents/`, then keep
+`UV_NO_SOURCES=1` on later Make commands (for example `UV_NO_SOURCES=1 make run` and
+`UV_NO_SOURCES=1 make cli`). Otherwise a later `uv run` can restore local sources.
+Published packages must provide the APIs used by your checkout; its declared
+minimum versions are in [agents/pyproject.toml](agents/pyproject.toml).
 
-Each MCP server is independent. Start only the ones your chosen sample requires.
+### 2. Configure and start the pod
 
-```bash
-# Bank Transfer sample
-cd servers/mcp/python/bank_core_mcp_server  && make run   # port 9801
-cd servers/mcp/python/risk_guard_mcp_server && make run   # port 9802
-
-# Postal Tracking sample
-cd servers/mcp/python/postal-service-mcp-server && make run  # port 9797
-cd servers/mcp/python/iot-tracking-mcp-server   && make run  # port 9798
-```
-
-### 4. Start the agents pod
+From the repository root:
 
 ```bash
 cd agents
-make run     # installs deps, starts pod on port 8010
+cp -n config/env.template config/.env
+# Edit config/.env: set OPENAI_API_KEY for the configured provider.
+# Keep CONFIG_FILE="./config/configuration.yaml" for this local quick start.
+make run
 ```
 
-### 5. Chat
+`cp -n` preserves an existing configuration. If the file already existed, check
+its `CONFIG_FILE` setting: `configuration_prod.yaml` needs real platform services.
+The quick-start profile disables user authentication and uses local SQLite. It
+listens on `http://127.0.0.1:8010/samples/agents/v1`.
 
-In a second terminal, from the `agents/` directory:
+### 3. Chat from a second terminal
 
 ```bash
+cd ~/Fred/fred-samples/agents
 make cli
 ```
 
-You will see:
+Inside the client:
 
-```
-[chat] pod url   : http://127.0.0.1:8010/samples/agents/v1
-[chat] auth      : none (security.user not configured)
-Connected to http://127.0.0.1:8010/samples/agents/v1
-Current agent: assistant
-```
-
-Switch to a sample agent:
-
-```
-/agent fred.samples.hello_graph
-/agent fred.samples.bank_transfer.graph
-/agent fred.samples.postal_tracking.graph
-/agent fred.samples.team_of_3.router
-```
-
-List all available agents:
-
-```
+```text
 /agents
+/agent fred.samples.assistant
+Explain what an API is.
+/agent fred.samples.hello_graph
+Hi!
 ```
+
+A successful first turn returns an answer; Hello Graph selects its greeting branch.
+Exact model wording varies. CLI help is available after installation with
+`.venv/bin/fred-agents-cli --help`.
+
+### 4. Add the servers for a business workflow
+
+Each command below starts a long-running process. Run only the servers you need,
+each in a separate terminal; `make -C` keeps the paths relative to the repository
+root rather than chaining directory changes.
+
+```bash
+# From the repository root — Bank Transfer dependencies:
+make -C servers/mcp/python/bank_core_mcp_server run   # port 9801
+make -C servers/mcp/python/risk_guard_mcp_server run  # port 9802
+
+# Or Postal Tracking dependencies:
+make -C servers/mcp/python/postal-service-mcp-server run # port 9797
+make -C servers/mcp/python/iot-tracking-mcp-server run   # port 9798
+```
+
+Then select `/agent fred.samples.bank_transfer.graph` or
+`/agent fred.samples.postal_tracking.graph` in the CLI. For routing without
+external tools, use `/agent fred.samples.team_of_3.router`.
+
+### Next steps and troubleshooting
+
+- [Agent developer guide](agents/README.md): code entry points, HTTP requests and
+  the difference between a local agent ID and a team-managed instance.
+- [Applications](apps/DEPLOYMENT.md): require a configured Fred installation;
+  they do not run from the agent-only quick start.
+- [Knowledge Bases](knowledge-bases/README.md): begin with a source-only dry run,
+  then connect a worker to Fred.
+
+| Symptom | Check |
+|---|---|
+| Missing `../fred` or local dependency path | Use the sibling checkout layout, or preserve `UV_NO_SOURCES=1` for the published-package path. |
+| Model authentication or model-not-found error | Match the key, provider URL and model name in `models_catalog.yaml`; an OpenAI key does not authenticate to Mistral. |
+| Keycloak, Postgres or platform connection error | Check whether your existing `.env` selects the security-on profile. |
+| MCP connection refused | Start the required server and check its port against `agents/config/mcp_catalog.yaml`. |
+| Address already in use | Stop the previous process, or change the relevant port and matching client/catalog URL together. |
 
 ---
 
@@ -426,14 +461,18 @@ make test           # each package's offline test suite
 make code-quality   # ruff, bandit, detect-secrets, basedpyright
 ```
 
-Both are offline: no model key, no MCP server, no cluster.
+The checks require no model key, MCP server or cluster. Initial dependency
+installation can use the network; provision the environments before running offline.
 
 The applications under `apps/` have no Makefile and are not in that fan-out.
-Each carries its own suite, run against its API requirements from the
-repository root:
+Each carries its own suite. For example, install Review Board’s test dependencies
+and use that environment explicitly, from the repository root:
 
 ```bash
-python -m pytest apps/review-board/tests
+uv venv apps/review-board/api/.venv
+uv pip install --python apps/review-board/api/.venv/bin/python \
+  -r apps/review-board/api/requirements-dev.txt
+apps/review-board/api/.venv/bin/python -m pytest apps/review-board/tests
 ```
 
 ---
@@ -446,7 +485,7 @@ python -m pytest apps/review-board/tests
 | `risk_guard_mcp_server` | 9802 | `check_kyc_compliance`, `evaluate_transfer_risk` |
 | `postal-service-mcp-server` | 9797 | `track_package`, `get_pickup_points_nearby`, `reroute_package_to_pickup_point`, `notify_customer` |
 | `iot-tracking-mcp-server` | 9798 | `get_live_tracking_snapshot`, `get_route_geometry`, `seed_demo_tracking_incident` |
-| `minimal-mcp-server` | — | Template — one echo tool, no business logic |
+| `minimal-mcp-server` | 9799 | Template — `random_numbers(count, min_value, max_value)` |
 
 All MCP servers use the [Streamable HTTP](https://modelcontextprotocol.io/specification) transport at `/mcp`.
 

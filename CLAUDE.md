@@ -48,7 +48,7 @@ the difference between a change that gets checked and one that does not.
 | `agents/` | The sample agents pod: one package `fred_samples_agents` | yes | yes |
 | `knowledge-bases/` | Three independent Knowledge Base pods | yes | yes |
 | `servers/mcp/python/` | Five sample MCP servers | **no** — they ship no test suite | **no** |
-| `apps/` | Two sample applications | **no** — see below | **no** |
+| `apps/` | Three sample applications | **no** — see below | **no** |
 | `dockerfiles/` | `Dockerfile` (agents pod), `Dockerfile.knowledge-base` (the three Knowledge Base pods), `Dockerfile.webdav-share` (a test fixture) | — | — |
 | `charts/` | Helm charts for deployable samples | **no** — validated by Helm in GitHub Actions | **no** |
 
@@ -61,14 +61,14 @@ check it.
 
 ### `agents/`
 
-One Python package, `fred_samples_agents`, holding five samples — `bank_transfer`,
+One Python package, `fred_samples_agents`, holding six sample groups — `document_review`, `bank_transfer`,
 `general_assistant`, `hello_graph`, `postal_tracking`, `team_of_3_agents_sample` — registered in
 `registry.py`. It owns its venv, its `.baseline/` files and its `tests/`.
 
 Its two useful targets are `make run` (start the pod) and `make cli` (open the interactive chat
 client against a running pod). There is no `make chat` target.
 
-It currently requires `fred-sdk>=3.4.1` and `fred-runtime>=3.4.2`.
+It currently requires `fred-sdk>=4.0.0` and `fred-runtime>=4.0.0`.
 
 ### `knowledge-bases/`
 
@@ -78,7 +78,7 @@ declaration to Fred and then serves runs; it opens no inbound port.
 
 ### Published images
 
-`.github/workflows/Build-and-push-docker.yml` is the only CI workflow. It publishes the Knowledge
+`.github/workflows/Build-and-push-docker.yml` publishes the Knowledge
 Base images in its matrix — today only `fred-samples-webdav-kb` — to
 `ghcr.io/fred-agent/fred-samples/`, after `UV_NO_SOURCES=1 make test`, a build and
 `make docker-smoke`. A git tag `code/v1.2.3` publishes image tag `v1.2.3` and creates a GitHub
@@ -91,37 +91,30 @@ publishes an image other people deploy.
 A sample application is **not** a sample agent: it ships its own container images and is
 deployed alongside Fred rather than loaded into the agent pod.
 
-Each application folder is `api/` + `capability/` + `ui/` + `deploy.yaml` + `README.md`. There is
-no Makefile, so **no target exists for the root Makefile to call** — their absence from
-repository-wide validation is a consequence of that, not an oversight to fix by adding them to a
-list.
+Each application has `api/`, `ui/`, `deploy.yaml`, tests and a README. There is
+no application Makefile, so root validation does not cover these services. Run
+the app-local tests with that application's dependencies as documented in its README.
 
-What is and is not checked:
+Applications ship no Python capability packages. The agent pod has no path dependency
+on `apps/`. Progress Tracker and Review Board expose MCP endpoints; Document Triage
+uses Fred's platform document tools for agent reads. Preserve that separation.
 
-- `capability/` **is** installed, editable, into the `agents` venv — `agents/pyproject.toml`
-  depends on `fred-capability-document-triage` and `fred-capability-progress-tracker`, resolved
-  through `[tool.uv.sources]` to `../apps/*/capability`. So a capability that does not import
-  cleanly breaks `make dev` in `agents/`.
-- `api/`, `ui/` and `deploy.yaml` are covered by **no automated check in this repository**.
+Each folder name is also its `app_id`; coordinate changes with routes, deployment
+manifests and catalog entries. Each backend validates caller identity and team access.
 
-The dependency is one-way and expressed through packaging only: no module under
-`agents/fred_samples_agents/` imports from `apps/`. Keep it that way.
-
-Each application folder name is also its `app_id`, and that id appears in the nginx prefix, the
-deployment manifest, the control-plane catalog and the gateway routes. Renaming a folder means
-changing all of them together.
-
-| Path | Who writes the record | Needs a secret |
+| Path | Who writes the record | Storage |
 |---|---|---|
-| `apps/document-triage/` | the human, under their own bearer | no |
-| `apps/progress-tracker/` | agents, through the app's own API | yes |
-| `apps/DEPLOYMENT.md` | shared guide covering both | — |
+| `apps/document-triage/` | the human, under their bearer | Knowledge Flow workspace |
+| `apps/progress-tracker/` | humans and agents through REST/MCP | app-owned SQLite |
+| `apps/review-board/` | staged agent workflow through REST/MCP | app-owned OpenSearch |
+| `apps/DEPLOYMENT.md` | shared integration guide | — |
 
-Prefer the `document-triage` shape when adding an application. Agents may read team-shared files
-but may only mutate inside their own subtree ("agents never share"), so an application whose
-agents write shared state has to keep that state outside Fred and reach it with a credential Fred
-neither issues nor validates. `progress-tracker` documents that cost; do not repeat it without a
-reason.
+These services need their own backend security credentials. They do not use a shared
+agent service key: application tools validate the caller's bearer or configured
+delegated identity. Read the application README before changing its admission rules.
+
+Helm validation/publication lives in `.github/workflows/Build-and-push-helm.yml`;
+the Docker workflow does not cover the entire repository.
 
 ### `.claude/skills/`
 

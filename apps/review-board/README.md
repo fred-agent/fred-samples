@@ -350,7 +350,7 @@ real FastAPI and MCP transports:
 
 ```bash
 uv pip install -r requirements-dev.txt
-pytest -q ../tests
+.venv/bin/python -m pytest -q ../tests
 ```
 
 The tests live beside the service rather than inside it, and put `api/` on the

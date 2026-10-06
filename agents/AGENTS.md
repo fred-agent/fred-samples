@@ -37,10 +37,10 @@ Before changing files here, read:
 - **Two configuration profiles live in `config/`**, and this is the only package with two. Read
   `config/.env`'s `CONFIG_FILE` before starting anything — see the profile section in
   root `CLAUDE.md`.
-- **This package depends on two sample applications.** `pyproject.toml` pulls
-  `fred-capability-document-triage` and `fred-capability-progress-tracker` from `../apps/*/capability`
-  through `[tool.uv.sources]`, editable. A capability that does not import cleanly breaks `make dev`
-  here. The dependency is one-way: nothing under `fred_samples_agents/` may import from `apps/`.
+- **Applications expose tools through MCP.** No `apps/*/capability` package is installed
+  into this pod. Keep the dependency boundary: nothing under `fred_samples_agents/`
+  imports application service code. Review Board's workflow definitions live here,
+  while its service and MCP tools live under `apps/review-board/`.
 - **`fred-sdk` and `fred-runtime` resolve from a sibling monorepo checkout by default**, also through
   `[tool.uv.sources]`. `make dev-pypi` forces PyPI resolution. Check what is actually installed in
   `.venv` before concluding anything about SDK behaviour.

@@ -61,9 +61,9 @@ Inside `fred-agents-cli`, select:
 Each test is verified by the coordinator's own "Choosing a specialist" thought
 (the "Thought…" panel above the reply in the chat UI, or the `thought`-channel
 message in `/history`) rather than a text marker in the answer — the
-coordinator's routing decision is now observable on its own, per
-`AGENT-THINKING-API-RFC.md` Amendment C. The reply text itself is a clean
-answer with no routing artifact.
+coordinator's routing decision is observable separately from the reply.
+The reply text itself is a clean answer with no routing artifact. Exact routing
+and wording depend on the configured model; these are the intended outcomes.
 
 ### Test 1 (should route to graph child)
 - Prompt:

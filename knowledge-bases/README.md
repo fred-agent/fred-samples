@@ -22,23 +22,24 @@ Each is a standalone package with its own venv. Start with `local-folder`.
 A sample that remembers what it already published keeps a **ledger**: one small
 JSON file per Knowledge Base instance, holding each document's path and the
 version the last run accepted. It is a cache, never a source of truth — delete
-it and the next run republishes everything, which costs one expensive run and
-nothing else.
+it and the next run republishes present files. For `local-folder`, losing the
+ledger also loses the list needed to retract files deleted since the last run;
+reconcile the target library before treating a ledger reset as harmless.
 
 **It belongs outside the working tree, always.** The default is already outside
 it, and nothing needs adding to `.gitignore`:
 
     ${XDG_STATE_HOME:-~/.local/state}/<package>/<instance>.json
 
-One environment variable moves it, per sample — `FRED_SAMPLES_KB_STATE_DIR`
-for `local-folder`, `FRED_SAMPLES_WEBDAV_STATE_DIR` for `webdav`. Point it at a
+`FRED_SAMPLES_KB_STATE_DIR` moves the `local-folder` ledger. Point it at a
 volume on a deployed pod. **Never point it at a path inside this repository:**
 it is per-machine, per-instance state, it means nothing on anyone else's
 checkout, and a ledger committed by accident makes the next run believe the
 library already holds documents it does not.
 
-`git-repository` has no such variable because it keeps nothing at all: Git
-answers "what changed since this revision" on its own.
+`git-repository` and `webdav` keep no local synchronization ledger. Git reads
+the saved source revision from Fred; WebDAV compares its listing against the
+target library. Git can still keep a local clone cache; see its own README.
 
 ---
 
@@ -51,6 +52,10 @@ make dev          # install (resolves fred-sdk from the ../../../fred checkout)
 make test         # offline, no network, no external service
 make code-quality # ruff, bandit, detect-secrets, basedpyright
 ```
+
+Without the sibling Fred checkout, use `make dev-pypi` and keep
+`UV_NO_SOURCES=1` on later Make commands, so `uv run` does not return to local
+sources. Initial dependency installation requires network access.
 
 An image exposes exactly two commands, and the Makefile wraps both:
 
@@ -119,8 +124,9 @@ POST <security.m2m.realm_url>/protocol/openid-connect/token
 ```
 
 then `Authorization: Bearer <token>` on every call. **The configuration names
-which variable holds the secret**; the value never appears in the YAML, and
-nothing on disk ever holds it.
+which variable holds the secret**. The value stays out of the YAML; locally it
+is stored in the untracked `config/.env`, and a deployment supplies it through
+its secret mechanism.
 
 ### The queue is derived, never configured
 
@@ -156,21 +162,22 @@ INFO    Knowledge Base fred.samples.webdav serving runs on kb__fred.samples.webd
 `security.user` is deliberately absent from a pod's configuration: it serves no
 user, opens no inbound port and validates no user token.
 
-**For the local stack the templates already hold the right values.** `cp
-config/env.template config/.env` is enough — there is nothing to edit before
-`make publish`.
+The templates illustrate one local stack. Check their URLs, client identity
+and secret against your deployment before `make publish`; copying a template
+does not provision a Keycloak client or create the target services.
 
 ---
 
 ## Trying one with no Fred at all
 
-Every sample ships a developer tool that runs the real handler against a real
-source and logs what it *would* publish. No Fred, no Temporal, no login.
+Every sample ships a developer tool to read a source without Temporal. Run the
+commands from the indicated sample directory. Git and WebDAV use a logging
+library unless you select a real library. For local-folder, explicitly suppress
+platform configuration to keep the run source-only:
 
 ```bash
 # local-folder
-make sync ROOT=/path/to/your/notes
-make watch ROOT=/path/to/your/notes      # over and over
+CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make sync ROOT=/path/to/your/notes
 
 # git-repository
 make sync REPO=ThalesGroup/fred SUBDIR=docs
