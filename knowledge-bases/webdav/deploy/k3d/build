@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Build this Knowledge Base's image for the local k3d instance
+# (fred-deployment-factory's `make k3d-app`). Writes $K3D_APP_OUT/images.txt,
+# the content-tagged reference to copy into the cluster, and
+# $K3D_APP_OUT/images.yaml, the Helm values selecting it.
+kb="$(cd "$(dirname "$0")/../.." && pwd)"
+out="${K3D_APP_OUT:?the factory provides K3D_APP_OUT}"
+
+image="$(make -s -C "$kb" --eval 'print-%: ; @echo $($*)' print-DOCKER_IMAGE)"
+log="$out/build.log"
+echo "Build $(basename "$kb") (log: $log)"
+# One retry: a dependency download cut mid-build is the usual failure.
+if ! make -C "$kb" docker-build >"$log" 2>&1; then
+  echo "Retry; see $log"
+  make -C "$kb" docker-build >"$log" 2>&1 || { tail -n 30 "$log" >&2; exit 1; }
+fi
+id="$(docker image inspect --format '{{.Id}}' "$image")"
+repository="${image%:*}"
+tag="k3d-${id#sha256:}"; tag="${tag:0:16}"
+docker tag "$image" "$repository:$tag"
+echo "Built: $repository:$tag"
+printf '%s\n' "$repository:$tag" >"$out/images.txt"
+printf 'image: { repository: "%s", tag: "%s" }\n' "$repository" "$tag" >"$out/images.yaml"

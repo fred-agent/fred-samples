@@ -28,6 +28,14 @@ helm template knowledge-base charts/knowledge-base \
   --namespace prism
 ```
 
+## On the local k3d instance
+
+fred-deployment-factory deploys the WebDAV Knowledge Base next to Fred with
+`make k3d-app DIR=<this checkout>/knowledge-bases/webdav`. It reads
+`knowledge-bases/webdav/deploy/k3d/`: the release (`helmfile.yaml.gotmpl`), the
+k3d values, the image build, and `identities.yaml`, from which the factory
+creates the `kb-fred.samples` client and its secret in `fred-secrets`.
+
 ## Published OCI chart
 
 A `chart/vX.Y.Z` repository tag publishes this chart. Container images are
