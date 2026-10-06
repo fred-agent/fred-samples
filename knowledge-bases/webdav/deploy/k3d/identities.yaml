@@ -6,5 +6,5 @@ clients:
   # the prefix to the first client that publishes it. values.yaml reads its
   # secret by secretKeyRef.
   - id: kb-fred.samples
-    secret: KEYCLOAK_KB_FRED_SAMPLES_CLIENT_SECRET
+    secret: KEYCLOAK_KB_FRED_SAMPLES_CLIENT_SECRET # pragma: allowlist secret (Secret key name, not a credential)
     grants: [app/service_agent]
