@@ -81,7 +81,8 @@ A pod is configured exactly the way every other Fred component is: one
 and environment variables carrying **secrets only**.
 
 ```
-config/configuration.yaml   knowledge_base:   prefix, control_plane_url, knowledge_flow_url
+config/configuration.yaml   app:              runtime_id (the pod's name in metrics and logs)
+                            knowledge_base:   prefix, control_plane_url, knowledge_flow_url
                             security.m2m:     realm_url, client_id, secret_env_var
                             scheduler.temporal: host, namespace
 
