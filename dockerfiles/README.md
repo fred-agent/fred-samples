@@ -1,62 +1,10 @@
 # Docker Guide for `fred-samples`
 
-Three images live here, and they are not the same kind of thing:
+`Dockerfile` builds the agents pod from `agents/` (`make docker-build`). It is
+not published by CI: build and push it by hand with the commands below.
 
-| Dockerfile | What it is | Built from |
-|---|---|---|
-| `Dockerfile` | the agents pod | `agents/` — `make docker-build` |
-| `Dockerfile.knowledge-base` | a Knowledge Base pod | `knowledge-bases/<sample>/` — `make docker-build` |
-| `Dockerfile.webdav-share` | a test fixture, not a deployable | `knowledge-bases/webdav/` — `make share-build` |
-
-Everything below is the **agents** image. For a Knowledge Base pod — how it is
-configured, why it opens no port, where its ledger volume goes and how it is
-given a private certificate authority — see
-[`knowledge-bases/webdav/README.md`](../knowledge-bases/webdav/README.md).
-
-One Dockerfile serves the three Knowledge Base samples: they differ by folder
-and package name, passed as `--build-arg KB=` and `--build-arg KB_PACKAGE=`,
-and by nothing else. The package name is passed rather than derived from the
-folder, because `git-repository` holds `fred_samples_git_kb`.
-
-Unlike the agents image, a Knowledge Base image resolves `fred-sdk` from PyPI
-(`uv sync --no-sources`), so it builds from a standalone clone with no sibling
-monorepo checkout — which is what CI has, and what makes it publishable.
-
----
-
-## Publishing images
-
-CI publishes the Knowledge Base images listed in the matrix of
-[`.github/workflows/Build-and-push-docker.yml`](../.github/workflows/Build-and-push-docker.yml)
-to `ghcr.io/fred-agent/fred-samples/<image>`. Today that is one image,
-`fred-samples-webdav-kb`. The agents image is not published by CI: it is built
-and pushed by hand with the commands further down.
-
-Nothing is pushed unless three checks pass first, in this order: the sample's
-offline tests (`UV_NO_SOURCES=1 make test`), a build, and `make docker-smoke`
-against the image just built. A pull request runs the same checks and pushes
-nothing.
-
-| Event | Tags pushed | Use it for |
-|---|---|---|
-| git tag `code/v1.2.3` | `v1.2.3`, plus a GitHub release listing the images | a Deployment |
-| the same tag | `latest`, which moves | knowing what the newest release is — never a Deployment |
-| push to `swift` | `swift-dev-<short sha>` | pinning one development build |
-| push to `swift` | `swift-dev`, which moves | trying the latest build by hand |
-
-A release is one tag for the whole repository — every image in the matrix gets
-the same version:
-
-```bash
-git tag -a code/v1.2.3 -m "fred-samples v1.2.3"
-git push origin code/v1.2.3
-```
-
-The version numbers this repository's own releases, not Fred's: which Fred an
-image works with is set by the `fred-sdk` floor in the sample's `pyproject.toml`.
-
-To publish another Knowledge Base, add its entry to the matrix and give its
-Makefile a `docker-smoke` target — CI calls it by name.
+The Knowledge Base samples ship no image: they are run from their own
+directory (see [`knowledge-bases/README.md`](../knowledge-bases/README.md)).
 
 ---
 

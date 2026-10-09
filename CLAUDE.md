@@ -40,20 +40,19 @@ something that can.
 
 ## Repository map
 
-Six areas, and **four different validation regimes**. Knowing which regime an area is in is
+Five areas, and **three different validation regimes**. Knowing which regime an area is in is
 the difference between a change that gets checked and one that does not.
 
 | Path | What it holds | `make test` / `make code-quality` from the root | pre-commit |
 |---|---|---|---|
 | `agents/` | The sample agents pod: one package `fred_samples_agents` | yes | yes |
-| `knowledge-bases/` | Three independent Knowledge Base pods | yes | yes |
+| `knowledge-bases/` | Two independent Knowledge Base pods | yes | yes |
 | `servers/mcp/python/` | Five sample MCP servers | **no** — they ship no test suite | **no** |
 | `apps/` | Three sample applications | **no** — see below | **no** |
-| `dockerfiles/` | `Dockerfile` (agents pod), `Dockerfile.knowledge-base` (the three Knowledge Base pods), `Dockerfile.webdav-share` (a test fixture) | — | — |
-| `charts/` | Helm charts for deployable samples | **no** — validated by Helm in GitHub Actions | **no** |
+| `dockerfiles/` | `Dockerfile` (agents pod) | — | — |
 
-The root `Makefile` fans out to exactly four packages: `agents`, `knowledge-bases/local-folder`,
-`knowledge-bases/git-repository`, `knowledge-bases/webdav`. `.pre-commit-config.yaml` matches
+The root `Makefile` fans out to exactly three packages: `agents`, `knowledge-bases/local-folder`,
+`knowledge-bases/git-repository`. `.pre-commit-config.yaml` matches
 `^(agents|knowledge-bases)/`.
 
 A new package with its own venv and baselines must be added to **both**, or nothing will ever
@@ -72,19 +71,9 @@ It currently requires `fred-sdk>=4.0.0` and `fred-runtime>=4.0.0`.
 
 ### `knowledge-bases/`
 
-Three standalone pods — `local-folder`, `git-repository`, `webdav` — each a package in its own
+Two standalone pods — `local-folder`, `git-repository` — each a package in its own
 right with its own Makefile, venv, baselines and `config/`. A Knowledge Base pod publishes a
 declaration to Fred and then serves runs; it opens no inbound port.
-
-### Published images
-
-`.github/workflows/Build-and-push-docker.yml` publishes the Knowledge
-Base images in its matrix — today only `fred-samples-webdav-kb` — to
-`ghcr.io/fred-agent/fred-samples/`, after `UV_NO_SOURCES=1 make test`, a build and
-`make docker-smoke`. A git tag `code/v1.2.3` publishes image tag `v1.2.3` and creates a GitHub
-release; a push to `swift` publishes `swift-dev` and `swift-dev-<short sha>`. Tags and the release
-command are documented in `dockerfiles/README.md`. Do not create a release tag unless asked: it
-publishes an image other people deploy.
 
 ### `apps/`
 
@@ -113,15 +102,11 @@ These services need their own backend security credentials. They do not use a sh
 agent service key: application tools validate the caller's bearer or configured
 delegated identity. Read the application README before changing its admission rules.
 
-Helm validation/publication lives in `.github/workflows/Build-and-push-helm.yml`;
-the Docker workflow does not cover the entire repository.
-
 ### `.claude/skills/`
 
-Three skills drive live sessions against the local stack: `live-observability-session` (the
-agents pod), `live-knowledge-base-session` (a Knowledge Base pod), and `webdav-share` (serve a
-folder over WebDAV and synchronize it). They are the fastest way to bring a sample up; read the
-relevant one before improvising a startup sequence.
+Two skills drive live sessions against the local stack: `live-observability-session` (the
+agents pod) and `live-knowledge-base-session` (a Knowledge Base pod). They are the fastest way to
+bring a sample up; read the relevant one before improvising a startup sequence.
 
 ---
 
@@ -173,7 +158,7 @@ A Knowledge Base pod loads `configuration.yaml` through `$CONFIG_FILE` like ever
 the same model the Control Plane parses. The environment carries the client secret alone.
 
 A setting that belongs to one sample's operator rather than to a team's form goes in a top-level
-section named after that sample — `webdav:` in `knowledge-bases/webdav/` — parsed by a subclass of the
+section named after that sample (none needs one today) — parsed by a subclass of the
 SDK's `PodConfiguration` so it comes from the same file through the same loader, and checked when the
 pod starts. Never an environment variable, and never a new key under `knowledge_base:`, which is the
 SDK's.
@@ -218,7 +203,7 @@ If `.env` does not already point at the profile the task needs, fix it and say s
 proceeding on whatever it happened to be set to. The `live-observability-session` skill enforces
 this and documents the exact ports and preconditions.
 
-**The three Knowledge Base packages have one profile each**, not two: they authenticate to Fred on
+**The two Knowledge Base packages have one profile each**, not two: they authenticate to Fred on
 every run, so a security-off profile would not describe anything they can actually do. Do not add a
 `configuration_prod.yaml` to them to make the shapes match.
 
@@ -292,7 +277,7 @@ make code-quality
 make test
 ```
 
-Both fan out to the four registered packages. To work on one package, run the same two targets from
+Both fan out to the three registered packages. To work on one package, run the same two targets from
 that package's directory.
 
 Default validation must not require external cloud services. If a sample requires a running MCP

@@ -8,7 +8,7 @@ Three kinds of samples, each self-contained:
   `make cli`, paired with MCP servers when a workflow depends on them.
 - **Applications** — your own UI and API, rendered in Fred and reachable by its agents.
 - **Knowledge Bases** — pods that keep a team's library in sync with an external
-  source (a folder, a Git branch, a WebDAV share).
+  source (a folder, a Git branch).
 
 > **Documentation** → [site.fredlab.dev](https://site.fredlab.dev)
 
@@ -25,8 +25,7 @@ fred-samples/
 │   └── review-board/               Sample application — UI + API + MCP tools, driven by agents
 ├── knowledge-bases/                Sample Knowledge Bases — see its README.md
 │   ├── local-folder/               synchronize Markdown from a folder
-│   ├── git-repository/             synchronize a GitHub or GitLab branch
-│   └── webdav/                     synchronize a WebDAV share
+│   └── git-repository/             synchronize a GitHub or GitLab branch
 └── servers/
     └── mcp/
         └── python/
@@ -282,7 +281,7 @@ identity, the configuration an operator fills in, and one async handler that
 reconciles the source and reports what changed.
 
 **Start here:** [knowledge-bases/README.md](knowledge-bases/README.md) — the
-three samples, how to run one by hand, and how to drive one with the skills.
+two samples, how to run one by hand, and how to drive one with the skills.
 
 ### Local Folder — sample Knowledge Base
 
@@ -310,38 +309,6 @@ CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make sync ROOT=/path/to/your/note
 A run writes documents through Knowledge Flow's REST API once the pod's
 configuration names a `knowledge_flow_url`; without one, it logs what it
 *would* publish, which is what `make sync` relies on.
-
-### WebDAV share — sample Knowledge Base
-
-Synchronizes a folder published over WebDAV — an Apache `mod_dav` share is the
-case it is written and tested against. Every run re-lists the whole tree, so
-unlike a source that only reports its own changes, this one can tell that a
-file is really gone and retract its document.
-
-```
-Folder:   knowledge-bases/webdav/
-Requires: a reachable WebDAV share — no model, no MCP server, no cluster
-```
-
-**Sample docs:** [README.md](knowledge-bases/webdav/README.md)
-
-**Kubernetes deployment:**
-[`charts/knowledge-base/`](charts/knowledge-base/) — published as
-an OCI Helm chart on GHCR for deployment repositories to consume with their
-own environment-specific values.
-
-```bash
-cd knowledge-bases/webdav
-make share-run                            # a real Apache mod_dav share, in a container
-make sync URL=http://localhost:8088/dav/  # one run against it, with no Fred
-```
-
-The `webdav-share` skill in `.claude/skills/` drives that from a sentence —
-serve any folder, then synchronize it into a real library.
-
-Two things it is worth reading that README for: why the walk is `Depth: 1` and
-never `Depth: infinity`, and why a corporate `https://` share fails in Python
-while `curl` against the same URL succeeds.
 
 ---
 
@@ -453,8 +420,8 @@ external tools, use `/agent fred.samples.team_of_3.router`.
 
 ## Validate the repository
 
-The agent pod and the three Knowledge Bases each own a venv, quality baselines
-and a Makefile; the root Makefile fans out to those four:
+The agent pod and the two Knowledge Bases each own a venv, quality baselines
+and a Makefile; the root Makefile fans out to those three:
 
 ```bash
 make test           # each package's offline test suite
@@ -493,13 +460,7 @@ All MCP servers use the [Streamable HTTP](https://modelcontextprotocol.io/specif
 
 ## Docker
 
-For container build/run/push workflows, see:
-
-- `dockerfiles/README.md`
-
-Images are published to `ghcr.io/fred-agent/fred-samples/` by CI. A release is
-a git tag `code/v1.2.3`, which publishes image tag `v1.2.3` — see
-"Publishing images" in `dockerfiles/README.md`.
+For container build/run workflows, see `dockerfiles/README.md`.
 
 ---
 

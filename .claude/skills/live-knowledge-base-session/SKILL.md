@@ -2,7 +2,7 @@
 name: live-knowledge-base-session
 description: Start the fred-samples Knowledge Base pod against the real local stack — publish its declaration, then serve runs — and watch both its stdout and the Control Plane's live while the developer drives the UI by hand. Use for manual observability on the Knowledge Base contract, or to check "does publication / enablement / instance creation / scheduled run actually behave and log correctly".
 user-invocable: true
-argument-hint: "[optional: which Knowledge Base sample is in scope — knowledge-bases/local-folder, knowledge-bases/git-repository or knowledge-bases/webdav]"
+argument-hint: "[optional: which Knowledge Base sample is in scope — knowledge-bases/local-folder or knowledge-bases/git-repository]"
 ---
 
 # Live Knowledge Base Session (fred-samples)
@@ -176,16 +176,12 @@ to every durable stream. The Control Plane's own logging is unaffected — that 
 
 ## Before starting anything — check for a stale worker
 
-    ps -ef | grep -E 'fred_samples_(local_folder|git|webdav)_kb run' | grep -v grep
+    ps -ef | grep -E 'fred_samples_(local_folder|git)_kb run' | grep -v grep
     ss -ltnp | grep -E ':8222|:7233'
 
 A forgotten `make run` from an earlier session keeps polling the same derived queue. Two workers on
 one queue means work lands in whichever process wins the race, and the session's logs will look
 inexplicably empty. Only kill processes confirmed stale.
-
-The WebDAV sample also brings up an Apache container to serve its test share
-(`.claude/skills/webdav-share`). Check for it too, and remember it is the sample's, not the
-developer's infra: `docker ps --filter name=fred-samples-webdav-share`.
 
 ## Ending the session
 

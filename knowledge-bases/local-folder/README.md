@@ -63,7 +63,7 @@ it would publish instead. It is the only place that knows the difference, and a
 Knowledge Base never writes to OpenSearch or S3 directly.
 
 The full chain (a schedule dispatching a run that writes into a real library) has
-been exercised with the `webdav` sample; this one uses the same SDK path.
+been exercised end to end on a local stack; this sample uses the same SDK path.
 
 ---
 

@@ -20,4 +20,3 @@ servers/
 # Per-machine ledgers and coverage output, which a build has no use for.
 **/htmlcov
 **/.coverage
-**/local-webdav/documents

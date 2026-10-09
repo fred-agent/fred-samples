@@ -5,13 +5,12 @@ them up to date. You declare one with `fred_sdk.knowledge_base`: an identity,
 the configuration a team fills in, and one async handler that reconciles the
 source and reports what changed.
 
-Three samples, from the smallest to the most demanding:
+Two samples, from the smallest to the most demanding:
 
 | Sample | Synchronizes | Read it for |
 |---|---|---|
 | [`local-folder/`](local-folder/) | a folder on the machine running it | the smallest believable implementation |
 | [`git-repository/`](git-repository/) | a GitHub or GitLab branch | a pod that keeps **no state at all** |
-| [`webdav/`](webdav/) | a folder published over WebDAV | an **exhaustive** source, so deletions are provable |
 
 Each is a standalone package with its own venv. Start with `local-folder`.
 
@@ -37,9 +36,9 @@ it is per-machine, per-instance state, it means nothing on anyone else's
 checkout, and a ledger committed by accident makes the next run believe the
 library already holds documents it does not.
 
-`git-repository` and `webdav` keep no local synchronization ledger. Git reads
-the saved source revision from Fred; WebDAV compares its listing against the
-target library. Git can still keep a local clone cache; see its own README.
+`git-repository` keeps no local synchronization ledger: it reads the saved
+source revision from Fred. It can still keep a local clone cache; see its own
+README.
 
 ---
 
@@ -89,10 +88,9 @@ config/configuration.yaml   knowledge_base:   prefix, control_plane_url, knowled
 config/.env                 CONFIG_FILE, and the one secret the YAML names
 ```
 
-A sample may add one section of its own for what its operator decides —
-`webdav:` in [`webdav/`](webdav/) — parsed by a subclass of the SDK's
-`PodConfiguration`, from the same file, by the same loader. Never an
-environment variable.
+A sample may add one section of its own for what its operator decides,
+parsed by a subclass of the SDK's `PodConfiguration`, from the same file, by
+the same loader. Never an environment variable.
 
 `security.m2m` is parsed by `M2MSecurity` and `scheduler.temporal` by
 `TemporalSchedulerConfig` — the same model the Control Plane parses for
@@ -135,7 +133,7 @@ same function, `fred_sdk.knowledge_base.routing.task_queue_for`, so the
 dispatching side and the worker side cannot disagree by construction:
 
 ```
-kb__ + fred.samples.webdav  →  kb__fred.samples.webdav
+kb__ + fred.samples.local-folder  →  kb__fred.samples.local-folder
 ```
 
 `kb__` is the catalog namespace Knowledge Bases reserve, so they never collide
@@ -148,7 +146,7 @@ Plane that disagreed would lose every run silently.
 The first line `make run` prints tells you which queue it took:
 
 ```
-INFO    Knowledge Base fred.samples.webdav serving runs on kb__fred.samples.webdav
+INFO    Knowledge Base fred.samples.local-folder serving runs on kb__fred.samples.local-folder
 ```
 
 ### Two failure modes worth recognising rather than debugging
@@ -171,8 +169,8 @@ does not provision a Keycloak client or create the target services.
 ## Trying one with no Fred at all
 
 Every sample ships a developer tool to read a source without Temporal. Run the
-commands from the indicated sample directory. Git and WebDAV use a logging
-library unless you select a real library. For local-folder, explicitly suppress
+commands from the indicated sample directory. Git uses a logging library
+unless you select a real library. For local-folder, explicitly suppress
 platform configuration to keep the run source-only:
 
 ```bash
@@ -182,20 +180,16 @@ CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make sync ROOT=/path/to/your/note
 # git-repository
 make sync REPO=ThalesGroup/fred SUBDIR=docs
 make sync REPO=group/sub/project PROVIDER=gitlab
-
-# webdav — ships its own share to run against
-make share-run                           # Apache mod_dav on :8088, in a container
-make sync URL=http://localhost:8088/dav/
-make share-stop
 ```
 
 To watch documents appear as you edit them, loop instead of running once:
 
 ```bash
-make watch URL=http://localhost:8088/dav/ LIBRARY=<id> INTERVAL=30
+# local-folder
+CONFIG_FILE=/nonexistent ENV_FILE=/nonexistent make watch ROOT=/path/to/your/notes
 ```
 
-Edit a file under the folder it serves and the next pass reports it `updated`;
+Edit a file under that folder and the next pass reports it `updated`;
 add one and it is `created`; delete one and it is `removed`. This is what a
 Fred schedule will do once one dispatches — Fred's own cadences are hourly,
 daily and weekly, so thirty seconds is a developer's loop and never an
@@ -204,8 +198,6 @@ instance's setting.
 **Run it twice.** The first run proves the source can be read; the second proves
 the implementation knows what it already published — which is where a
 synchronizer is usually wrong.
-
-`make share-run SHARE_DIR=/path/to/documents` serves any folder you like.
 
 ---
 
@@ -219,7 +211,7 @@ synchronizer is usually wrong.
 4. `make publish`, then `make run`.
 
 **Fred claims a prefix for the first client that publishes under it, and there
-is no rebinding path.** All three samples publish under `fred.samples`, so
+is no rebinding path.** Both samples publish under `fred.samples`, so
 publishing from some other convenient client does not burn one definition — it
 burns the whole prefix.
 
@@ -229,7 +221,7 @@ burns the whole prefix.
 |---|---|
 | `publish` puts the definition in front of an admin | works |
 | enabling it for a team | works |
-| writing documents into a real library | works — in a scheduled run once `knowledge_flow_url` is set; by hand with `webdav`'s `make sync LIBRARY=<id>` |
+| writing documents into a real library | works — in a scheduled run once `knowledge_flow_url` is set |
 | a **schedule** dispatching a run to `make run` | works |
 
 The whole chain has been exercised against a local security-on stack: a
@@ -246,17 +238,10 @@ than assuming the trigger is unbuilt.
 
 ## With the skills
 
-Two skills in [`.claude/skills/`](../.claude/skills/), both collaborative: you
-drive the UI and decide what to test, the assistant starts things and reports
-what it sees.
-
-| Skill | Ask it for |
-|---|---|
-| `webdav-share` | "serve ~/Fred/WebDav over WebDAV", then one synchronization run — into a real library if you name one |
-| `live-knowledge-base-session` | publish and serve a pod against the live stack, watching the pod *and* the Control Plane together |
-
-They compose: `webdav-share` supplies the source, `live-knowledge-base-session`
-runs the pod that reads it.
+`live-knowledge-base-session` in [`.claude/skills/`](../.claude/skills/) is
+collaborative: you drive the UI and decide what to test, the assistant
+publishes and serves a pod against the live stack, watching the pod *and* the
+Control Plane together, and reports what it sees.
 
 ---
 
