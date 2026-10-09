@@ -4,6 +4,12 @@
 #
 # A deployed pod mounts this from a ConfigMap and points $CONFIG_FILE at it.
 
+# This pod's identity in metrics and logs: the `service` label of every series
+# and the `service` field of every log line. Chosen by whoever deploys the pod,
+# a lowercase slug, the same key agent pods use.
+app:
+  runtime_id: "git-repository-kb"
+
 knowledge_base:
   # The dotted prefix this image owns. Every name it publishes lives under it,
   # and Fred binds the prefix to this pod's client on the first publication.

@@ -31,11 +31,11 @@ import time
 import uuid
 from collections.abc import Sequence
 
-from fred_sdk.contracts.models import TuningValue
 from fred_sdk.knowledge_base import (
     KnowledgeBaseDeclaration,
     KnowledgeBaseRunContext,
     KnowledgeBaseRunOutcome,
+    TuningValue,
 )
 
 from fred_samples_local_folder_kb.knowledge_base import kb

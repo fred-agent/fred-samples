@@ -28,17 +28,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from fred_sdk.contracts.models import FieldSpec, TuningValue
 from fred_sdk.knowledge_base import (
     MAX_ISSUES,
+    FieldSpec,
     KnowledgeBase,
     KnowledgeBaseIssue,
+    KnowledgeBaseReconciliation,
     KnowledgeBaseRunContext,
     KnowledgeBaseRunOutcome,
     KnowledgeBaseSyncResult,
+    TuningValue,
 )
 
-from fred_samples_local_folder_kb.document_boundary import SOURCE_TAG, open_boundary
+from fred_samples_local_folder_kb.document_boundary import open_boundary
 from fred_samples_local_folder_kb.ledger import (
     Ledger,
     LedgerError,
@@ -211,7 +213,7 @@ async def _synchronize(
     published_bytes = 0
 
     removed = 0
-    boundary = open_boundary(library_id=context.library_id, source_tag=SOURCE_TAG)
+    boundary = open_boundary(context)
     try:
         for relative, path, content_hash, size_bytes in scanned:
             known = previous.get(relative)
@@ -274,7 +276,11 @@ async def _synchronize(
             if save_error
             else KnowledgeBaseRunOutcome.succeeded
         ),
-        reconciliation_complete=not truncated,
+        reconciliation=(
+            KnowledgeBaseReconciliation.partial
+            if truncated
+            else KnowledgeBaseReconciliation.complete
+        ),
         summary=f"{summary} — ledger not saved: {save_error}"
         if save_error
         else summary,
@@ -394,7 +400,7 @@ def _failed(code: str, message: str) -> KnowledgeBaseSyncResult:
     """A run that never read the source proves nothing about what it holds."""
     return KnowledgeBaseSyncResult(
         outcome=KnowledgeBaseRunOutcome.failed,
-        reconciliation_complete=False,
+        reconciliation=KnowledgeBaseReconciliation.partial,
         summary=message,
         errors=[KnowledgeBaseIssue(code=code, message=message)],
     )

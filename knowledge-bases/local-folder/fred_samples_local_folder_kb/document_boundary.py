@@ -29,16 +29,14 @@ import logging
 from pathlib import Path
 from typing import Protocol
 
-from fred_sdk.knowledge_base import DocumentPublisher, MissingPodConfiguration
-from fred_sdk.knowledge_base.configuration import PodConfiguration
+from fred_sdk.knowledge_base import (
+    DocumentPublisher,
+    KnowledgeBaseRunContext,
+    KnowledgeFlowNotConfigured,
+    MissingPodConfiguration,
+)
 
 logger = logging.getLogger(__name__)
-
-# Which configured document source a write is attributed to. Knowledge Flow
-# resolves this against its own deployment configuration and refuses anything
-# it does not know, so a Knowledge Base cannot name itself here: the vocabulary
-# is the platform's, not a contributor's.
-SOURCE_TAG = "fred"
 
 
 class Boundary(Protocol):
@@ -92,18 +90,12 @@ class _KnowledgeFlowBoundary:
         await self._publisher.aclose()
 
 
-def open_boundary(*, library_id: str, source_tag: str) -> Boundary:
-    """Whichever boundary this environment can support."""
+def open_boundary(context: KnowledgeBaseRunContext) -> Boundary:
+    """This run's library, or a boundary that only logs when there is no Fred."""
     try:
-        configuration = PodConfiguration.load()
-    except MissingPodConfiguration as error:
-        logger.info("No Fred configuration (%s): logging documents instead", error)
+        return _KnowledgeFlowBoundary(DocumentPublisher.for_run(context))
+    except (MissingPodConfiguration, KnowledgeFlowNotConfigured) as error:
+        logger.info(
+            "No Knowledge Flow to write into (%s): logging documents instead", error
+        )
         return _LoggingBoundary()
-
-    if not configuration.knowledge_flow_url:
-        logger.info("No Knowledge Flow URL set: logging documents instead")
-        return _LoggingBoundary()
-
-    return _KnowledgeFlowBoundary(
-        DocumentPublisher(configuration, library_id=library_id, source_tag=source_tag)
-    )

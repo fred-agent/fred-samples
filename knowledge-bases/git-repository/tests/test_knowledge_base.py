@@ -26,6 +26,7 @@ import json
 
 from fred_sdk.knowledge_base import (
     KnowledgeBaseDeclaration,
+    KnowledgeBaseReconciliation,
     KnowledgeBaseRunContext,
     KnowledgeBaseRunOutcome,
 )
@@ -81,7 +82,7 @@ def test_a_run_reports_fred_s_counters_from_what_this_implementation_counted():
     result = _result(report)
 
     assert result.outcome is KnowledgeBaseRunOutcome.succeeded
-    assert result.reconciliation_complete is True
+    assert result.reconciliation is KnowledgeBaseReconciliation.complete
     assert (
         result.discovered,
         result.created,
@@ -99,7 +100,7 @@ def test_a_failed_run_is_reported_as_one():
     result = _result(report)
 
     assert result.outcome is KnowledgeBaseRunOutcome.failed
-    assert result.reconciliation_complete is False
+    assert result.reconciliation is KnowledgeBaseReconciliation.partial
 
 
 def test_a_configuration_that_cannot_be_read_never_reaches_a_repository(monkeypatch):
@@ -118,3 +119,11 @@ def test_a_configuration_that_cannot_be_read_never_reaches_a_repository(monkeypa
 
     assert result.outcome is KnowledgeBaseRunOutcome.failed
     assert [issue.code for issue in result.errors] == ["repository_invalid"]
+
+
+def test_a_branch_that_has_not_moved_is_up_to_date():
+    """Most scheduled runs: operators see them as nothing to do, not as partial."""
+    result = _result(RunReport(pass_kind=PassKind.up_to_date, revision="4f2a9c1e"))
+
+    assert result.outcome is KnowledgeBaseRunOutcome.succeeded
+    assert result.reconciliation is KnowledgeBaseReconciliation.up_to_date

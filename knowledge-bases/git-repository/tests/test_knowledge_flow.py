@@ -82,4 +82,13 @@ def test_the_cursor_is_kept_by_fred():
 
 
 def test_without_fred_configuration_the_library_only_logs():
-    assert isinstance(open_library("lib-1"), LoggingLibrary)
+    from fred_sdk.knowledge_base import KnowledgeBaseRunContext
+
+    context = KnowledgeBaseRunContext(
+        definition_id="fred.samples.git-repository",
+        instance_id="instance-1",
+        team_id="team-1",
+        run_id="run-1",
+        library_id="lib-1",
+    )
+    assert isinstance(open_library(context), LoggingLibrary)

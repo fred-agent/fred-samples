@@ -10,7 +10,7 @@ dependencies = [
   # needs; `publish` and the handler itself do not load it. 4.1.1 adds the
   # cursor calls (`DocumentPublisher.source_version`); until it is on PyPI,
   # `make dev` resolves it from the fred checkout below.
-  "fred-sdk[knowledge-base]>=4.1.1",
+  "fred-sdk[knowledge-base]>=4.4.3",
   # Git as a library: no binary in the image, no subprocess, and the token
   # passed as a parameter rather than embedded in a URL or a command line.
   "dulwich>=1.2.14",

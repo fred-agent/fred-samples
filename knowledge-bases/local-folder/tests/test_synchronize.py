@@ -24,7 +24,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fred_sdk.knowledge_base import KnowledgeBaseIssue, KnowledgeBaseRunOutcome
+from fred_sdk.knowledge_base import (
+    KnowledgeBaseIssue,
+    KnowledgeBaseReconciliation,
+    KnowledgeBaseRunOutcome,
+)
 
 from tests.conftest import SyncRunner
 
@@ -37,7 +41,7 @@ def test_first_run_creates_every_discovered_document(sync: SyncRunner, notes: Pa
     result = sync(notes)
 
     assert result.outcome is KnowledgeBaseRunOutcome.succeeded
-    assert result.reconciliation_complete is True
+    assert result.reconciliation is KnowledgeBaseReconciliation.complete
     assert result.discovered == 3
     assert result.created == 3
     assert result.unchanged == 0
@@ -85,7 +89,7 @@ def test_max_files_bounds_discovery(sync: SyncRunner, notes: Path):
     assert result.created == 2
     # A bounded run has not seen the rest of the folder, so it must not claim
     # the files it never reached were removed — and must say so in the result.
-    assert result.reconciliation_complete is False
+    assert result.reconciliation is KnowledgeBaseReconciliation.partial
     assert result.outcome is KnowledgeBaseRunOutcome.succeeded
     assert result.removed == 0
     assert "max_files_reached" in _codes(result.warnings)
@@ -118,7 +122,7 @@ def test_a_missing_root_path_fails_with_a_clear_error(sync: SyncRunner, tmp_path
     result = sync(tmp_path / "does-not-exist")
 
     assert result.outcome is KnowledgeBaseRunOutcome.failed
-    assert result.reconciliation_complete is False
+    assert result.reconciliation is KnowledgeBaseReconciliation.partial
     assert _codes(result.errors) == {"root_path_missing"}
     assert "does-not-exist" in result.summary
 

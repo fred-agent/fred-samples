@@ -86,7 +86,7 @@ publish. Run it twice: the second run reports everything `unchanged`, because th
 implementation keeps its own ledger (below).
 
 A run also states whether it observed the folder exhaustively
-(`reconciliation_complete`). Only a complete run's `removed` count means a
+(`reconciliation`: `complete` or `partial`). Only a complete run's `removed` count means a
 document is really gone — which is why a run bounded by `max_files` carries the
 files it never reached forward instead of retracting them.
 
@@ -98,7 +98,7 @@ files it never reached forward instead of retracting them.
 |---|---|---|---|
 | `root_path` | `string` | yes | Folder to synchronize. Nothing outside it is ever read. |
 | `glob` | `string` | no | Which files to pick up. Default `**/*.md`. Hidden paths are never picked up. |
-| `max_files` | `integer` | no | Safety bound. A bounded run reports `reconciliation_complete: false`, so an absence in it never reads as a deletion. |
+| `max_files` | `integer` | no | Safety bound. A bounded run reports `reconciliation: partial`, so an absence in it never reads as a deletion. |
 
 A team fills these in per instance; the published declaration carries the
 *declarations* only, never a value.

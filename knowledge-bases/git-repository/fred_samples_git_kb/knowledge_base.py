@@ -25,13 +25,15 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fred_sdk.contracts.models import FieldSpec, UIHints
 from fred_sdk.knowledge_base import (
+    FieldSpec,
     KnowledgeBase,
     KnowledgeBaseIssue,
+    KnowledgeBaseReconciliation,
     KnowledgeBaseRunContext,
     KnowledgeBaseRunOutcome,
     KnowledgeBaseSyncResult,
+    UIHints,
 )
 
 from fred_samples_git_kb.git_source import (
@@ -41,6 +43,7 @@ from fred_samples_git_kb.git_source import (
 )
 from fred_samples_git_kb.knowledge_flow import open_library
 from fred_samples_git_kb.matching import DEFAULT_INCLUDE
+from fred_samples_git_kb.plan import PassKind
 from fred_samples_git_kb.providers import Provider
 from fred_samples_git_kb.report import Issue, RunReport
 from fred_samples_git_kb.settings import (
@@ -165,7 +168,7 @@ async def synchronize(context: KnowledgeBaseRunContext) -> KnowledgeBaseSyncResu
         username=settings.forge.username,
         token=settings.token,
     )
-    library = open_library(context.library_id)
+    library = open_library(context)
     try:
         report = await reconcile(settings=settings, source=source, library=library)
     finally:
@@ -196,7 +199,7 @@ def _result(report: RunReport) -> KnowledgeBaseSyncResult:
             if report.succeeded
             else KnowledgeBaseRunOutcome.failed
         ),
-        reconciliation_complete=report.exhaustive,
+        reconciliation=_reconciliation(report),
         summary=report.summary(),
         discovered=report.considered,
         created=report.written_new,
@@ -206,6 +209,21 @@ def _result(report: RunReport) -> KnowledgeBaseSyncResult:
         warnings=[_issue(issue) for issue in report.warnings],
         errors=[_issue(issue) for issue in report.errors],
         metrics=report.metrics(),
+    )
+
+
+def _reconciliation(report: RunReport) -> KnowledgeBaseReconciliation:
+    """A branch that has not moved is up to date, which is most scheduled runs.
+
+    Only a full pass compares every file, so only it is complete; an incremental
+    pass acts on what the diff names and nothing else.
+    """
+    if report.pass_kind is PassKind.up_to_date and report.succeeded:
+        return KnowledgeBaseReconciliation.up_to_date
+    return (
+        KnowledgeBaseReconciliation.complete
+        if report.exhaustive
+        else KnowledgeBaseReconciliation.partial
     )
 
 
@@ -219,7 +237,7 @@ def _refused(code: str, message: str) -> KnowledgeBaseSyncResult:
     """A run that never read the repository proves nothing about the library."""
     return KnowledgeBaseSyncResult(
         outcome=KnowledgeBaseRunOutcome.failed,
-        reconciliation_complete=False,
+        reconciliation=KnowledgeBaseReconciliation.partial,
         summary=message,
         errors=[KnowledgeBaseIssue(code=code, message=message)],
     )

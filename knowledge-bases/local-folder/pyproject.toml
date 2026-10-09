@@ -8,7 +8,7 @@ license = { text = "Apache-2.0" }
 dependencies = [
   # The `knowledge-base` extra brings the workflow engine the `run` command
   # needs; `publish` and the handler itself do not load it.
-  "fred-sdk[knowledge-base]>=4.0.0",
+  "fred-sdk[knowledge-base]>=4.4.3",
 ]
 
 # The contract's entry point is `python -m fred_samples_local_folder_kb`
