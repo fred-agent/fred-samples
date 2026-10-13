@@ -67,7 +67,7 @@ One Python package, `fred_samples_agents`, holding six sample groups — `docume
 Its two useful targets are `make run` (start the pod) and `make cli` (open the interactive chat
 client against a running pod). There is no `make chat` target.
 
-It currently requires `fred-sdk>=4.0.0` and `fred-runtime>=4.0.0`.
+It currently requires `fred-sdk>=4.5.0` and `fred-runtime>=4.5.0`.
 
 ### `knowledge-bases/`
 

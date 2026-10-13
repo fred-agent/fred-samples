@@ -7,7 +7,7 @@ The pod and CLI run in separate terminals. Model routing remains model-dependent
 Verified console entry points for installed Fred packages:
 - `fred-agents-cli`
 
-The package declares `fred-runtime>=4.0.0`; `fred-agents-cli` is its chat client.
+The package declares `fred-runtime>=4.5.0`; `fred-agents-cli` is its chat client.
 Check `.venv/bin/fred-agents-cli --help` for the installed version’s options.
 
 ## 2. How to access CLI help

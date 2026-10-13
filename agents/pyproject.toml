@@ -6,12 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Apache-2.0" }
 dependencies = [
-  # 3.4.0 is intentionally excluded: the published fred-sdk==3.4.0 /
-  # fred-runtime==3.4.0 pair is mismatched (fred_runtime.app.agent_app
-  # imports TeamOperationRouteRule, which does not exist in fred_sdk
-  # 3.4.0) — confirmed broken 2026-08-01, fixed by the 3.4.1 publish.
-  "fred-sdk>=4.0.0",
-  "fred-runtime>=4.0.0",
+  "fred-sdk>=4.5.0",
+  "fred-runtime>=4.5.0",
   "greenlet>=3.4.0",
   "uvicorn>=0.35",
 ]
