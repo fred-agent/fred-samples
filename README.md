@@ -325,21 +325,19 @@ to the provider configured in `agents/config/models_catalog.yaml`.
   both `chat` and `language` at **Mistral** (`mistral-medium-2508`), through an
   OpenAI-compatible client. Put the **Mistral API key** in `OPENAI_API_KEY`; the
   variable name identifies the client adapter, not the provider you must pay.
-- For the default development path, sibling checkouts:
+The Makefiles create their virtual environments and install `uv`. Python packages
+resolve Fred's libraries from PyPI, through the committed `uv.lock`; their declared
+minimum versions are in [agents/pyproject.toml](agents/pyproject.toml). To work on
+unreleased fred, point `FRED_REPO` at your fred checkout (there is no default) and
+overlay it:
 
-```text
-~/Fred/
-├── fred/
-└── fred-samples/
+```bash
+export FRED_REPO=/path/to/your/fred
+make dev-local     # fred's libraries from your checkout; `make dev-pypi` goes back
 ```
 
-The Makefiles create their virtual environments and install `uv`. Python packages
-resolve Fred libraries from the sibling checkout by default. To use published
-packages without that checkout, run `make dev-pypi` from `agents/`, then keep
-`UV_NO_SOURCES=1` on later Make commands (for example `UV_NO_SOURCES=1 make run` and
-`UV_NO_SOURCES=1 make cli`). Otherwise a later `uv run` can restore local sources.
-Published packages must provide the APIs used by your checkout; its declared
-minimum versions are in [agents/pyproject.toml](agents/pyproject.toml).
+`make run`, `make test` and the other commands keep that overlay; the image takes it with
+`FRED_LIBS=local make docker-build` (fred-deployment-factory's docs/LOCAL-DEVELOPMENT.md, "Work on unreleased fred").
 
 ### 2. Configure and start the pod
 
@@ -410,7 +408,7 @@ external tools, use `/agent fred.samples.team_of_3.router`.
 
 | Symptom | Check |
 |---|---|
-| Missing `../fred` or local dependency path | Use the sibling checkout layout, or preserve `UV_NO_SOURCES=1` for the published-package path. |
+| `FRED_REPO is not set` | Point `FRED_REPO` at your fred checkout for `make dev-local`, or use `make dev` (published fred). |
 | Model authentication or model-not-found error | Match the key, provider URL and model name in `models_catalog.yaml`; an OpenAI key does not authenticate to Mistral. |
 | Keycloak, Postgres or platform connection error | Check whether your existing `.env` selects the security-on profile. |
 | MCP connection refused | Start the required server and check its port against `agents/config/mcp_catalog.yaml`. |

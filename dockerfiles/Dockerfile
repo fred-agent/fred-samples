@@ -1,3 +1,13 @@
+# fred's libraries: the locked, published ones (pypi), or local: the fred checkout
+# passed as the `fred` build context (`FRED_LIBS=local make docker-build`;
+# fred-deployment-factory's docs/LOCAL-DEVELOPMENT.md, "Work on unreleased fred").
+ARG FRED_LIBS=pypi
+
+FROM scratch AS fred-libs-pypi
+FROM scratch AS fred-libs-local
+COPY --from=fred libs /libs
+FROM fred-libs-${FRED_LIBS} AS fred-libs
+
 FROM python:3.12-slim
 
 ARG USER_NAME=fred-user
@@ -27,9 +37,17 @@ USER ${USER_NAME}
 # Install runtime dependencies only; project source is copied later.
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy the agents pod source tree.
+# Copy the agents pod source tree, then install the project itself. Empty unless
+# FRED_LIBS=local: then fred's libraries from the checkout replace the locked ones.
 COPY --chown=${USER_ID}:${GROUP_ID} agents/ /app/
+COPY --from=fred-libs --chown=${USER_ID}:${GROUP_ID} / /fred/
+RUN uv sync --frozen --no-dev && \
+    if [ -d /fred/libs ]; then \
+      uv pip install --no-sources --python /app/.venv/bin/python \
+        /fred/libs/fred-core /fred/libs/fred-pod /fred/libs/fred-sdk /fred/libs/fred-runtime; \
+    fi
 
 EXPOSE 8010
 
-CMD ["uv", "run", "uvicorn", "fred_samples_agents.main:app", "--host", "0.0.0.0", "--port", "8010"]
+# The venv's uvicorn directly: `uv run` would re-sync the environment at start.
+CMD ["uvicorn", "fred_samples_agents.main:app", "--host", "0.0.0.0", "--port", "8010"]

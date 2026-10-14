@@ -41,9 +41,10 @@ Before changing files here, read:
   into this pod. Keep the dependency boundary: nothing under `fred_samples_agents/`
   imports application service code. Review Board's workflow definitions live here,
   while its service and MCP tools live under `apps/review-board/`.
-- **`fred-sdk` and `fred-runtime` resolve from a sibling monorepo checkout by default**, also through
-  `[tool.uv.sources]`. `make dev-pypi` forces PyPI resolution. Check what is actually installed in
-  `.venv` before concluding anything about SDK behaviour.
+- **`fred-sdk` and `fred-runtime` resolve from PyPI**, through the committed `uv.lock`.
+  `make dev-local` overlays your fred checkout at `FRED_REPO` (required, no default), `make
+  dev-pypi` goes back. Check what is actually installed in `.venv` before concluding anything
+  about SDK behaviour.
 - **MCP-backed samples need their servers running.** `config/mcp_catalog.yaml` lists the servers and
   ports; the servers themselves are under `../servers/mcp/python/`. Keep the catalog and the folder
   names in step.

@@ -37,23 +37,42 @@ $(TARGET)/.uv-installed: $(TARGET)/.venv-created
 	$(PIP) install uv
 	@touch $@
 
-# pyproject.toml's [tool.uv.sources] points fred-sdk at ../../../fred/libs
-# (local monorepo checkout, sibling to this repo) by default, so a change to the
-# SDK is tried here before it is released. `make dev-pypi` resolves the published
-# SDK instead, which is what the deployable image and an outside consumer get.
-$(TARGET)/.compiled: pyproject.toml $(TARGET)/.uv-installed
-	VIRTUAL_ENV= $(UV_RUN) sync --extra dev
+# fred's libraries: `pypi` (the locked, published ones) or `local` (your fred
+# checkout at FRED_REPO, which has no default): fred-deployment-factory's
+# docs/LOCAL-DEVELOPMENT.md, "Work on unreleased fred". `dev` is the only step
+# that syncs (UV_NO_SYNC), so a `make dev-local` overlay survives every `uv run`.
+FRED_LIBS ?= pypi
+FRED_REPO ?=
+export UV_NO_SYNC := 1
+
+$(TARGET)/.compiled: pyproject.toml uv.lock $(TARGET)/.uv-installed
+	VIRTUAL_ENV= $(UV_RUN) sync --locked --extra dev
 	@touch $@
 
 .PHONY: dev
-dev: $(TARGET)/.compiled ## Install dependencies (local fred-sdk, see [tool.uv.sources])
+dev: $(TARGET)/.compiled ## Install locked dependencies (fred from PyPI)
 	@echo "Dependencies installed."
 
+.PHONY: fred-repo-check
+fred-repo-check:
+	@test -n "$(FRED_REPO)" || { printf '%s\n' \
+		"FRED_REPO is not set: give the path of YOUR fred checkout, e.g." \
+		"    export FRED_REPO=/path/to/your/fred" \
+		"(without it, make dev and FRED_LIBS=pypi use the released fred)" >&2; exit 1; }
+	@test -d "$(FRED_REPO)/libs" || { echo "FRED_REPO=$(FRED_REPO) is not a fred checkout (no libs/): set FRED_REPO to the path of your fred checkout." >&2; exit 1; }
+
+.PHONY: dev-local
+dev-local: fred-repo-check dev ## Swap in fred's libraries from your fred checkout at FRED_REPO (editable)
+	VIRTUAL_ENV=$(VENV) $(UV_RUN) pip install \
+		--editable $(FRED_REPO)/libs/fred-pod \
+		--editable "$(FRED_REPO)/libs/fred-sdk[knowledge-base]"
+	@echo "fred's libraries from $(FRED_REPO) ($$(git -C $(FRED_REPO) describe --always --dirty)). \`make dev-pypi\` goes back."
+
 .PHONY: dev-pypi
-dev-pypi: $(TARGET)/.uv-installed ## Install strictly from PyPI, ignoring [tool.uv.sources]
-	VIRTUAL_ENV= $(UV_RUN) sync --extra dev --no-sources
+dev-pypi: $(TARGET)/.uv-installed ## Go back to the locked, published fred libraries after dev-local
+	VIRTUAL_ENV= $(UV_RUN) sync --locked --extra dev
 	@touch $(TARGET)/.compiled
-	@echo "Dependencies installed from PyPI only (--no-sources)."
+	@echo "Dependencies installed from the lock."
 
 .PHONY: update
 update: $(TARGET)/.uv-installed ## Re-resolve and update all dependencies

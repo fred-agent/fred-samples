@@ -123,8 +123,10 @@ package.
 Before changing runtime integration code, check the versions of `fred-sdk` and `fred-runtime`
 actually installed in the package's venv — not the floor in `pyproject.toml`, which is a minimum.
 
-Packages resolve `fred-sdk` / `fred-runtime` from a sibling monorepo checkout by default, through
-`[tool.uv.sources]`. `make dev-pypi` forces PyPI resolution instead.
+Packages resolve `fred-sdk` / `fred-runtime` from PyPI, through the committed `uv.lock` (no
+`[tool.uv.sources]`). `make dev-local` overlays your fred checkout at `FRED_REPO` (required, no
+default) and `make dev-pypi` goes back; `FRED_LIBS=local make docker-build` does the same for the
+image (fred-deployment-factory's docs/LOCAL-DEVELOPMENT.md, "Work on unreleased fred").
 
 ---
 

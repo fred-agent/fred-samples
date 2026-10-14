@@ -62,9 +62,3 @@ minversion = "8.0"
 addopts = "-ra"
 markers = ["integration: marks tests that require external services"]
 testpaths = ["tests"]
-
-[tool.uv.sources]
-# Local path override for this monorepo's own fred-sdk, sibling to this repo
-# under ~/Fred — the same convention as the local-folder sample beside it.
-# Comment out to force PyPI resolution, or use `make dev-pypi`.
-fred-sdk = { path = "../../../fred/libs/fred-sdk", editable = true }

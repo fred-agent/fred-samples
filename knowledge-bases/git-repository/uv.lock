@@ -173,41 +173,16 @@ wheels = [
 [[package]]
 name = "fred-pod"
 version = "4.5.0"
-source = { editable = "../../../fred/libs/fred-pod" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8.6" },
-    { name = "basedpyright", marker = "extra == 'dev'", specifier = "==1.31.0" },
-    { name = "detect-secrets", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pydantic", specifier = ">=2.5.2,<3.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.3" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.2.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
-    { name = "pytest-socket", marker = "extra == 'dev'", specifier = ">=0.7.0" },
-    { name = "python-dotenv", specifier = ">=1.0.1,<2.0.0" },
-    { name = "pyyaml", specifier = ">=6.0.1" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.5,<0.16" },
-]
-provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "bandit", specifier = ">=1.8.6" },
-    { name = "basedpyright", specifier = "==1.31.0" },
-    { name = "detect-secrets", specifier = ">=1.5.0" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-asyncio", specifier = ">=1.2.0" },
-    { name = "pytest-cov", specifier = ">=6.2.1" },
-    { name = "pytest-socket", specifier = ">=0.7.0" },
-    { name = "ruff", specifier = ">=0.12.5,<0.16" },
+sdist = { url = "https://files.pythonhosted.org/packages/d2/b6/a43f5fa0ea1eb1a61a0b1bbe2c48a8214886b2d5645be1e604e252cd3636/fred_pod-4.5.0.tar.gz", hash = "sha256:9fce5e61f2b34c271506eddd9c804c73a3e7cd3149100d160a4d5061ae6e8f49", size = 30937, upload-time = "2026-10-12T15:20:05.403Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/05/eda092bbefaf06586c5158ce858a36ca032f9f3b9dce25c4c8431d93ab30/fred_pod-4.5.0-py3-none-any.whl", hash = "sha256:48d793493795f36d6b013bde4a96e7bd17b09a28b0cb40d85e3a104aa26b7e34", size = 30258, upload-time = "2026-10-12T15:20:04.261Z" },
 ]
 
 [[package]]
@@ -250,7 +225,7 @@ requires-dist = [
     { name = "basedpyright", marker = "extra == 'dev'", specifier = "==1.31.0" },
     { name = "detect-secrets", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "dulwich", specifier = ">=1.2.14" },
-    { name = "fred-sdk", extras = ["knowledge-base"], editable = "../../../fred/libs/fred-sdk" },
+    { name = "fred-sdk", extras = ["knowledge-base"], specifier = ">=4.5.0" },
     { name = "pathspec", specifier = ">=1.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
@@ -275,54 +250,21 @@ dev = [
 [[package]]
 name = "fred-sdk"
 version = "4.5.0"
-source = { editable = "../../../fred/libs/fred-sdk" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fred-pod" },
     { name = "httpx" },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/ca/1469cd5545a27001702989a02c75e7e0f974792ff125106ad36266db09bc/fred_sdk-4.5.0.tar.gz", hash = "sha256:131de339fb88816819ff33ffed1e1a05ce4ebd8c355fa89a59db84e6d6b194e4", size = 242248, upload-time = "2026-10-12T15:20:13.06Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/90/5f794c59d2ae388351857b6f669110476a57a7a26b255345a41e2d4fa65a/fred_sdk-4.5.0-py3-none-any.whl", hash = "sha256:ac5c2a40b80ed75546402b559dd0f2d163650adfa2ab92d18119a1a9177b52d3", size = 217566, upload-time = "2026-10-12T15:20:11.554Z" },
 ]
 
 [package.optional-dependencies]
 knowledge-base = [
     { name = "prometheus-client" },
     { name = "temporalio" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8.6" },
-    { name = "basedpyright", marker = "extra == 'dev'", specifier = "==1.31.0" },
-    { name = "detect-secrets", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "fred-core", marker = "extra == 'agents'", editable = "../../../fred/libs/fred-core" },
-    { name = "fred-pod", editable = "../../../fred/libs/fred-pod" },
-    { name = "fred-sdk", extras = ["agents"], marker = "extra == 'dev'" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "langchain", marker = "extra == 'agents'", specifier = ">=1.4.2" },
-    { name = "langchain-core", marker = "extra == 'agents'", specifier = ">=1.6.5" },
-    { name = "langgraph", marker = "extra == 'agents'", specifier = ">=1.2.12" },
-    { name = "prometheus-client", marker = "extra == 'knowledge-base'", specifier = ">=0.20.0" },
-    { name = "pydantic", specifier = ">=2.7.0,<3.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
-    { name = "pytest-socket", marker = "extra == 'dev'", specifier = ">=0.7.0" },
-    { name = "pyyaml", marker = "extra == 'agents'", specifier = ">=6.0.1" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.5" },
-    { name = "temporalio", marker = "extra == 'dev'", specifier = ">=1.7.0" },
-    { name = "temporalio", marker = "extra == 'knowledge-base'", specifier = ">=1.7.0" },
-]
-provides-extras = ["agents", "knowledge-base", "dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "bandit", specifier = ">=1.8.6" },
-    { name = "basedpyright", specifier = "==1.31.0" },
-    { name = "detect-secrets", specifier = ">=1.5.0" },
-    { name = "fred-sdk", extras = ["agents"] },
-    { name = "pytest", specifier = ">=8.4.2" },
-    { name = "pytest-cov", specifier = ">=6.2.1" },
-    { name = "pytest-socket", specifier = ">=0.7.0" },
-    { name = "ruff", specifier = ">=0.12.5" },
-    { name = "temporalio", specifier = ">=1.7.0" },
 ]
 
 [[package]]

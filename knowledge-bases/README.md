@@ -52,9 +52,10 @@ make test         # offline, no network, no external service
 make code-quality # ruff, bandit, detect-secrets, basedpyright
 ```
 
-Without the sibling Fred checkout, use `make dev-pypi` and keep
-`UV_NO_SOURCES=1` on later Make commands, so `uv run` does not return to local
-sources. Initial dependency installation requires network access.
+Fred's libraries come from PyPI, through the committed `uv.lock`. To work on unreleased
+fred, `make dev-local` with `FRED_REPO` set to your fred checkout (no default) overlays it,
+and `make dev-pypi` goes back (fred-deployment-factory's docs/LOCAL-DEVELOPMENT.md, "Work on unreleased fred"). Initial dependency installation requires network
+access.
 
 An image exposes exactly two commands, and the Makefile wraps both:
 

@@ -46,14 +46,3 @@ minversion = "8.0"
 addopts = "-ra"
 markers = ["integration: marks tests that require external services"]
 testpaths = ["tests"]
-
-[tool.uv.sources]
-# Local path override for development against this monorepo's own fred-sdk /
-# fred-runtime, sibling to this repo under ~/Fred. Same convention as
-# fred/libs/fred-sdk's own [tool.uv.sources] — keeps `uv run`/`uv sync` from
-# silently reverting to the PyPI versions after a manual local install (an
-# ad-hoc `uv pip install --editable` does NOT persist across the next
-# `uv run`, which always re-syncs against this table first). Comment out to
-# force PyPI resolution, or use `make dev-pypi`.
-fred-sdk = { path = "../../fred/libs/fred-sdk", editable = true }
-fred-runtime = { path = "../../fred/libs/fred-runtime", editable = true }
