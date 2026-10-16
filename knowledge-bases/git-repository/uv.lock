@@ -172,7 +172,7 @@ wheels = [
 
 [[package]]
 name = "fred-pod"
-version = "4.5.0"
+version = "4.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -180,9 +180,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/b6/a43f5fa0ea1eb1a61a0b1bbe2c48a8214886b2d5645be1e604e252cd3636/fred_pod-4.5.0.tar.gz", hash = "sha256:9fce5e61f2b34c271506eddd9c804c73a3e7cd3149100d160a4d5061ae6e8f49", size = 30937, upload-time = "2026-10-12T15:20:05.403Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/f3/39bd0b57924642db73fab9eb3ddf54753f127cd293e96379015f7007458a/fred_pod-4.5.1.tar.gz", hash = "sha256:ad441e842951bd1b0161fe1da146ef35ebcbb58a08c828c2bbb8511890571c86", size = 30779, upload-time = "2026-10-16T04:41:55.157Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/05/eda092bbefaf06586c5158ce858a36ca032f9f3b9dce25c4c8431d93ab30/fred_pod-4.5.0-py3-none-any.whl", hash = "sha256:48d793493795f36d6b013bde4a96e7bd17b09a28b0cb40d85e3a104aa26b7e34", size = 30258, upload-time = "2026-10-12T15:20:04.261Z" },
+    { url = "https://files.pythonhosted.org/packages/45/74/c9fd790b75334ba0c6e278b9cdbbaee3d08e3fdde28342df03d792736105/fred_pod-4.5.1-py3-none-any.whl", hash = "sha256:32aa56d4a2e48aff43358bc8abfaca3698c38e6b62e08a79644463992fb1e72c", size = 30280, upload-time = "2026-10-16T04:41:53.779Z" },
 ]
 
 [[package]]
@@ -225,7 +225,7 @@ requires-dist = [
     { name = "basedpyright", marker = "extra == 'dev'", specifier = "==1.31.0" },
     { name = "detect-secrets", marker = "extra == 'dev'", specifier = ">=1.5.0" },
     { name = "dulwich", specifier = ">=1.2.14" },
-    { name = "fred-sdk", extras = ["knowledge-base"], specifier = ">=4.5.0" },
+    { name = "fred-sdk", extras = ["knowledge-base"], specifier = ">=4.5.1" },
     { name = "pathspec", specifier = ">=1.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2.1" },
@@ -249,16 +249,16 @@ dev = [
 
 [[package]]
 name = "fred-sdk"
-version = "4.5.0"
+version = "4.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fred-pod" },
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/62/ca/1469cd5545a27001702989a02c75e7e0f974792ff125106ad36266db09bc/fred_sdk-4.5.0.tar.gz", hash = "sha256:131de339fb88816819ff33ffed1e1a05ce4ebd8c355fa89a59db84e6d6b194e4", size = 242248, upload-time = "2026-10-12T15:20:13.06Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/6a/b2ef9b59369429a3c0cb9957f221308876ecc9f3c90e759c4754a3c4e268/fred_sdk-4.5.1.tar.gz", hash = "sha256:03706f0d6ea4731de8dda210f06634743450eb2128a7bb92eeaec71f4976a2cd", size = 241813, upload-time = "2026-10-16T04:42:03.18Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/90/5f794c59d2ae388351857b6f669110476a57a7a26b255345a41e2d4fa65a/fred_sdk-4.5.0-py3-none-any.whl", hash = "sha256:ac5c2a40b80ed75546402b559dd0f2d163650adfa2ab92d18119a1a9177b52d3", size = 217566, upload-time = "2026-10-12T15:20:11.554Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/e9/4f760f844843b3691281b7a0cb5088b8b6b0abae81c27a559b22a282c9b5/fred_sdk-4.5.1-py3-none-any.whl", hash = "sha256:9a432df646ac579c302f7f55d8bc66521461259cc2190454b296dc7d78bdf6a8", size = 218661, upload-time = "2026-10-16T04:42:01.234Z" },
 ]
 
 [package.optional-dependencies]
