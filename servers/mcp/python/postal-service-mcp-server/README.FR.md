@@ -19,7 +19,7 @@ Le Model Context Protocol (MCP) standardise la façon dont des « serveurs de ca
 - Outils (tools) : fonctions déclarées par le serveur, typées, que le client peut appeler de manière structurée.
 - Clients : agents (Fred, LangChain, etc.) qui parlent MCP et savent consommer les endpoints.
 
-Dans cet exemple, on utilise l’API « FastMCP » du SDK officiel `mcp`, qui simplifie l’écriture des outils via un décorateur `@server.tool()` et expose directement une application ASGI à brancher sur Uvicorn.
+Dans cet exemple, on utilise `MCPServer` du SDK officiel `mcp` (version 2, l’ancien « FastMCP »), qui simplifie l’écriture des outils via un décorateur `@server.tool()` et expose directement une application ASGI à brancher sur Uvicorn.
 
 ---
 
@@ -27,7 +27,7 @@ Dans cet exemple, on utilise l’API « FastMCP » du SDK officiel `mcp`, qui si
 
 Le serveur d’exemple se trouve dans `postal_service_mcp_server/server_mcp.py` et fait trois choses :
 
-- Crée un serveur MCP avec `FastMCP` et expose l’app via `app = server.streamable_http_app()` (endpoint `/mcp`).
+- Crée un serveur MCP avec `MCPServer` et expose l’app via `app = server.streamable_http_app()` (endpoint `/mcp`).
 - Déclare quatre outils pédagogiques :
   - `validate_address(country, city, postal_code, street)` : valide/normalise une adresse et renvoie un `address_id`.
   - `quote_shipping(weight_kg, distance_km, speed)` : calcule un prix/ETA.
@@ -49,7 +49,7 @@ Fichier à lire : `postal_service_mcp_server/server_mcp.py`
 
 ## Installation et lancement
 
-La commande ci‑dessous crée un venv, installe les dépendances (`mcp[fastapi]`, `uvicorn`, `fastapi`) et lance le serveur :
+La commande ci‑dessous crée un venv, installe les dépendances (`mcp==2.3.0`, `uvicorn`) et lance le serveur :
 
 ```bash
 make server
@@ -61,7 +61,7 @@ make server
 python -m venv .venv
 . .venv/bin/activate
 pip install --upgrade pip
-pip install "mcp[fastapi]" fastapi uvicorn
+pip install uvicorn "mcp==2.3.0"
 uvicorn postal_service_mcp_server.server_mcp:app --host 127.0.0.1 --port 9797 --reload
 ```
 
@@ -113,8 +113,8 @@ Conseils :
 
 ## Dépannage
 
-- « ImportError: No module named 'mcp.server.fastapi' »
-  - Les versions récentes du SDK `mcp` n’exportent plus ce module. L’exemple actuel utilise `FastMCP` et `server.streamable_http_app()` (voir `postal_service_mcp_server/server_mcp.py`).
+- « No module named 'mcp.server.fastmcp' » ou « cannot import name 'FastMCP' »
+  - Depuis la version 2 du SDK `mcp`, `FastMCP` s’appelle `MCPServer` (`from mcp.server.mcpserver import MCPServer`). L’exemple actuel l’utilise avec `server.streamable_http_app()` (voir `postal_service_mcp_server/server_mcp.py`).
   - Si vous avez un ancien venv, faites : `make clean && make server`.
 
 - « Address already in use »

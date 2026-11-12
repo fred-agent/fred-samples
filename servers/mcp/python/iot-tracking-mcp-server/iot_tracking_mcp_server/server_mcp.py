@@ -30,16 +30,17 @@ import time
 import uuid
 
 try:
-    from mcp.server import FastMCP
+    # MCPServer (mcp>=2, formerly FastMCP) provides the @tool decorator and a Starlette app
+    from mcp.server.mcpserver import MCPServer
 except Exception as e:  # pragma: no cover
     raise ImportError(
-        "The 'mcp' package is required for iot_tracking_mcp_server.server_mcp.\n"
-        "Install it via: pip install \"mcp[fastapi]\"\n"
+        "The 'mcp' package (>=2) is required for iot_tracking_mcp_server.server_mcp.\n"
+        "Install it via: pip install \"mcp>=2.3,<3\" uvicorn\n"
         f"Import error: {e}"
     )
 
 
-server = FastMCP(name="iot-tracking-mcp")
+server = MCPServer(name="iot-tracking-mcp")
 
 
 _SCENARIOS: Dict[str, Dict[str, Any]] = {}

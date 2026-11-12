@@ -22,7 +22,7 @@ Or manually:
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install fastapi uvicorn "mcp[fastapi]"
+pip install uvicorn "mcp==2.3.0"
 uvicorn iot_tracking_mcp_server.server_mcp:app --host 127.0.0.1 --port 9798 --reload
 ```
 

@@ -22,7 +22,8 @@ venv:
 
 install: venv
 	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
+	# Uvicorn and the MCP SDK, pinned to the version Fred itself uses
+	$(PYTHON) -m pip install uvicorn "mcp==2.3.0"
 
 run server: install
 	$(UVICORN) $(APP_MODULE) --host $(HOST) --port $(PORT) --reload

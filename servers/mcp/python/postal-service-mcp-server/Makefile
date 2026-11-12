@@ -9,14 +9,6 @@ PORT := 9797
 HOST := 127.0.0.1
 APP_MODULE := postal_service_mcp_server.server_mcp:app
 
-# Demo OIDC defaults (override on the command line if needed, e.g. `make run DEMO_MCP_OIDC_ENABLED=false`)
-DEMO_MCP_OIDC_ENABLED ?= true
-DEMO_MCP_KEYCLOAK_REALM_URL ?= http://localhost:8080/realms/app
-DEMO_MCP_KEYCLOAK_CLIENT_ID ?= app
-export DEMO_MCP_OIDC_ENABLED
-export DEMO_MCP_KEYCLOAK_REALM_URL
-export DEMO_MCP_KEYCLOAK_CLIENT_ID
-
 .PHONY: help venv install server clean
 
 help:
@@ -36,11 +28,9 @@ venv:
 install: venv
 	@echo "Installing/Upgrading dependencies in $(VENV_DIR)..."
 	$(PYTHON) -m pip install --upgrade pip
-	# Install FastAPI, Uvicorn, and the MCP SDK, pinned to the last version
-	# verified to work with this server (see server_mcp.py FastMCP usage).
-	# Note: the "fastapi" extra no longer exists on mcp>=1.28 (pip warns and
-	# ignores it); fastapi/uvicorn are installed directly instead.
-	$(PYTHON) -m pip install fastapi uvicorn "mcp==1.28.1"
+	# Uvicorn and the MCP SDK, pinned to the version Fred itself uses
+	# (see server_mcp.py MCPServer usage; FastMCP was renamed in mcp 2).
+	$(PYTHON) -m pip install uvicorn "mcp==2.3.0"
 
 # 3. Run the server (Requires install)
 # Both names, because `server` is declared .PHONY above: without a recipe it
@@ -48,7 +38,6 @@ install: venv
 run server: install
 	@echo "🚀 Starting standard MCP server on http://$(HOST):$(PORT)"
 	@echo "Using module: $(APP_MODULE)"
-	@echo "Demo OIDC: enabled=$(DEMO_MCP_OIDC_ENABLED) realm=$(DEMO_MCP_KEYCLOAK_REALM_URL) client_id=$(DEMO_MCP_KEYCLOAK_CLIENT_ID)"
 	$(UVICORN) $(APP_MODULE) --host $(HOST) --port $(PORT) --reload
 
 # 4. Clean up: removes the virtual environment folder
